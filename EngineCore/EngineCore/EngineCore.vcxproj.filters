@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="源文件">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="资源文件">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="源文件\D3DCore">
+      <UniqueIdentifier>{6a84ad79-11f6-4193-8d95-e322faf1b5c3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="源文件\Exmaple1">
+      <UniqueIdentifier>{3dec8d36-8f7d-4d47-8aa0-f1de98409b52}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="common.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Math.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="trivial.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Device.h">
+      <Filter>源文件\D3DCore</Filter>
+    </ClInclude>
+    <ClInclude Include="RootSignature.h">
+      <Filter>源文件\D3DCore</Filter>
+    </ClInclude>
+    <ClInclude Include="DynamicDescriptorHeap.h">
+      <Filter>源文件\D3DCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TestBox\d3dApp.h">
+      <Filter>源文件\Exmaple1</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TestBox\d3dUtil.h">
+      <Filter>源文件\Exmaple1</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TestBox\GameTimer.h">
+      <Filter>源文件\Exmaple1</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TestBox\MathHelper.h">
+      <Filter>源文件\Exmaple1</Filter>
+    </ClInclude>
+    <ClInclude Include="..\TestBox\UploadBuffer.h">
+      <Filter>源文件\Exmaple1</Filter>
+    </ClInclude>
+    <ClInclude Include="PipelineStateObject.h">
+      <Filter>源文件\D3DCore</Filter>
+    </ClInclude>
+    <ClInclude Include="Resource.h">
+      <Filter>源文件\D3DCore</Filter>
+    </ClInclude>
+    <ClInclude Include="GPUBuffer.h">
+      <Filter>源文件\D3DCore</Filter>
+    </ClInclude>
+    <ClInclude Include="CommandObjects.h">
+      <Filter>源文件\D3DCore</Filter>
+    </ClInclude>
+    <ClInclude Include="GPUMemory.h">
+      <Filter>源文件\D3DCore</Filter>
+    </ClInclude>
+    <ClInclude Include="WindowsInteraction.h">
+      <Filter>源文件\D3DCore</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="RootSignature.cpp">
+      <Filter>源文件\D3DCore</Filter>
+    </ClCompile>
+    <ClCompile Include="DynamicDescriptorHeap.cpp">
+      <Filter>源文件\D3DCore</Filter>
+    </ClCompile>
+    <ClCompile Include="Device.cpp">
+      <Filter>源文件\D3DCore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TestBox\d3dApp.cpp">
+      <Filter>源文件\Exmaple1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TestBox\d3dUtil.cpp">
+      <Filter>源文件\Exmaple1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TestBox\GameTimer.cpp">
+      <Filter>源文件\Exmaple1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TestBox\MathHelper.cpp">
+      <Filter>源文件\Exmaple1</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TestBox\BoxApp.cpp">
+      <Filter>源文件\Exmaple1</Filter>
+    </ClCompile>
+    <ClCompile Include="PipelineStateObject.cpp">
+      <Filter>源文件\D3DCore</Filter>
+    </ClCompile>
+    <ClCompile Include="GPUBuffer.cpp">
+      <Filter>源文件\D3DCore</Filter>
+    </ClCompile>
+    <ClCompile Include="CommandObject.cpp">
+      <Filter>源文件\D3DCore</Filter>
+    </ClCompile>
+    <ClCompile Include="GPUMemory.cpp">
+      <Filter>源文件\D3DCore</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Trash.txt" />
+    <Text Include="TODO.txt" />
+  </ItemGroup>
+</Project>
