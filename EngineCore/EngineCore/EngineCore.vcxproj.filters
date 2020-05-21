@@ -15,12 +15,12 @@
     <Filter Include="源文件\Exmaple1">
       <UniqueIdentifier>{3dec8d36-8f7d-4d47-8aa0-f1de98409b52}</UniqueIdentifier>
     </Filter>
+    <Filter Include="源文件\Entitys">
+      <UniqueIdentifier>{01945550-8ce0-428c-9da0-e632b453397a}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="common.h">
-      <Filter>源文件</Filter>
-    </ClInclude>
-    <ClInclude Include="Math.h">
       <Filter>源文件</Filter>
     </ClInclude>
     <ClInclude Include="trivial.h">
@@ -68,6 +68,15 @@
     <ClInclude Include="WindowsInteraction.h">
       <Filter>源文件\D3DCore</Filter>
     </ClInclude>
+    <ClInclude Include="HomoMath.h">
+      <Filter>源文件</Filter>
+    </ClInclude>
+    <ClInclude Include="HomoCore.h">
+      <Filter>源文件\D3DCore</Filter>
+    </ClInclude>
+    <ClInclude Include="DDSTextureLoader.h">
+      <Filter>源文件\D3DCore</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RootSignature.cpp">
@@ -91,9 +100,6 @@
     <ClCompile Include="..\TestBox\MathHelper.cpp">
       <Filter>源文件\Exmaple1</Filter>
     </ClCompile>
-    <ClCompile Include="..\TestBox\BoxApp.cpp">
-      <Filter>源文件\Exmaple1</Filter>
-    </ClCompile>
     <ClCompile Include="PipelineStateObject.cpp">
       <Filter>源文件\D3DCore</Filter>
     </ClCompile>
@@ -106,9 +112,17 @@
     <ClCompile Include="GPUMemory.cpp">
       <Filter>源文件\D3DCore</Filter>
     </ClCompile>
+    <ClCompile Include="HomoCore.cpp">
+      <Filter>源文件\D3DCore</Filter>
+    </ClCompile>
+    <ClCompile Include="DDSTextureLoader.cpp">
+      <Filter>源文件\D3DCore</Filter>
+    </ClCompile>
+    <ClCompile Include="..\TestBox\BoxApp.cpp">
+      <Filter>源文件\Exmaple1</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="Trash.txt" />
     <Text Include="TODO.txt" />
   </ItemGroup>
 </Project>

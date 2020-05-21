@@ -99,36 +99,36 @@ void CommandQueue::Close() {
 }
 
 
-CommandQueue& CommandListManager::GetCommandQueue(D3D12_COMMAND_LIST_TYPE Type) {
+CommandQueue& CommandQueueManager::GetCommandQueue(D3D12_COMMAND_LIST_TYPE Type) {
 	switch (Type) {
 	case D3D12_COMMAND_LIST_TYPE_DIRECT:
 		return mGraphicQueue;
 	case D3D12_COMMAND_LIST_TYPE_COMPUTE:
 		return mComputeQueue;
 	default:
-		DEBUG_OUTPUT("CommandListManager::GetCommandQueue : invaild command list type and by default we will get a graphic command queue as "
+		DEBUG_OUTPUT("CommandQueueManager::GetCommandQueue : invaild command list type and by default we will get a graphic command queue as "
 			"return value");
 		__debugbreak();
 		return mGraphicQueue;
 	}
 }
 
-void CommandListManager::WaitForFence(FenceVal fence) {
+void CommandQueueManager::WaitForFence(FenceVal fence) {
 	CommandQueue& target = GetCommandQueue((D3D12_COMMAND_LIST_TYPE)(fence >> 60));
 	target.WaitForFence(fence);
 }
 
-bool CommandListManager::IsFenceCompleted(FenceVal fence) {
+bool CommandQueueManager::IsFenceCompleted(FenceVal fence) {
 	CommandQueue& target = GetCommandQueue((D3D12_COMMAND_LIST_TYPE)(fence >> 60));
 	return target.IsFenceCompeleted(fence);
 }
 
-void CommandListManager::WaitForIdle(D3D12_COMMAND_LIST_TYPE Type) {
+void CommandQueueManager::WaitForIdle(D3D12_COMMAND_LIST_TYPE Type) {
 	CommandQueue& target = GetCommandQueue(Type);
 	return target.WaitForIdle();
 }
 
-ID3D12GraphicsCommandList* CommandListManager::CreateCommandList(D3D12_COMMAND_LIST_TYPE Type,ID3D12CommandAllocator** allocator) {
+ID3D12GraphicsCommandList* CommandQueueManager::CreateCommandList(D3D12_COMMAND_LIST_TYPE Type,ID3D12CommandAllocator** allocator) {
 	ID3D12Device* dev = Device::GetCurrentDevice();
 	FenceVal fence;
 
@@ -142,7 +142,7 @@ ID3D12GraphicsCommandList* CommandListManager::CreateCommandList(D3D12_COMMAND_L
 		*allocator = mComputeQueue.RequestAllocator(fence);
 		break;
 	default:
-		DEBUG_OUTPUT("CommandListManager::CreateCommandList : Invaild command list type");
+		DEBUG_OUTPUT("CommandQueueManager::CreateCommandList : Invaild command list type");
 		__debugbreak();
 		return nullptr;
 	}
@@ -151,14 +151,14 @@ ID3D12GraphicsCommandList* CommandListManager::CreateCommandList(D3D12_COMMAND_L
 	ID3D12GraphicsCommandList* cmdLis;
 	HRESULT hr = dev->CreateCommandList(0, Type, *allocator, nullptr, IID_PPV_ARGS(&cmdLis));
 
-	ASSERT_HR(hr, "CommandListManager::CreateCommandList : Fail to create command list");
+	ASSERT_HR(hr, "CommandQueueManager::CreateCommandList : Fail to create command list");
 
 	cmdLis->Close();
 	return cmdLis;
 }
 
 
-void CommandListManager::ReleaseCommandAllocator(ID3D12CommandAllocator* Allocator, FenceVal fence) {
+void CommandQueueManager::ReleaseCommandAllocator(ID3D12CommandAllocator* Allocator, FenceVal fence) {
 	CommandQueue& target = GetCommandQueue((D3D12_COMMAND_LIST_TYPE)(fence >> 60));
 	target.ReleaseAllocator(fence, Allocator);
 }

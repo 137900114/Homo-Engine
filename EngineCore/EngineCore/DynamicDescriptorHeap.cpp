@@ -13,7 +13,7 @@ ID3D12DescriptorHeap* DescriptorHeapAllocator::CreateDescriptorHeap(D3D12_DESCRI
 	D3D12_DESCRIPTOR_HEAP_DESC desc;
 	desc.NumDescriptors = DESCRIPTOR_HEAP_SIZE;
 	desc.Type = m_Type;
-	desc.NodeMask = 1;
+	desc.NodeMask = 0;
 	desc.Flags = flag;
 
 	ID3D12DescriptorHeap* res = nullptr;

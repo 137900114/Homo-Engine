@@ -3,10 +3,10 @@
 #include "trivial.h"
 using namespace Core;
 
-const UINT UploadMemAllocator::mResourceSize = 0xfffff;
+const UINT UploadMemAllocator::mResourceSize = 0xffff;
 
 
-Resource* UploadMemAllocator::CreateNewResource(UINT Size) {
+GPUMemPage* UploadMemAllocator::CreateNewResource(UINT Size) {
 	D3D12_RESOURCE_DESC desc;
 
 	desc.Format = DXGI_FORMAT_UNKNOWN;
@@ -33,14 +33,15 @@ Resource* UploadMemAllocator::CreateNewResource(UINT Size) {
 
 	ASSERT_HR(hr,"UploadMemAllocator::CreateNewResource : Fail to create new resource");
 
-	Resource* result = new Resource(newRes,D3D12_RESOURCE_STATE_GENERIC_READ);
+	GPUMemPage* result = new GPUMemPage(newRes, D3D12_RESOURCE_STATE_COMMON, Size);
 	return result;
 }
 
 GPUMemAlloc UploadMemAllocator::Allocate(UINT Size) {
 
+
 	if (Size > mResourceSize) {
-		Resource* LargePage = CreateNewResource(Size);
+		GPUMemPage* LargePage = CreateNewResource(Size);
 		GPUMemAlloc alloc(*LargePage, Size, 0);
 
 		ToReleasePages.push(std::make_pair(true, LargePage));
@@ -55,7 +56,7 @@ GPUMemAlloc UploadMemAllocator::Allocate(UINT Size) {
 		}
 		else {
 			mCurrentPage = CreateNewResource();
-			MemPool.push_back(std::unique_ptr<Resource>(mCurrentPage));
+			MemPool.push_back(std::unique_ptr<GPUMemPage>(mCurrentPage));
 		}
 	}
 
@@ -88,7 +89,7 @@ void  UploadMemAllocator::FlushUsedMem(FenceVal fence) {
 	while (!UsedMem.empty()) {
 		if (!UsedMem.front().first >= fence)
 			break;
-		Resource* res = UsedMem.front().second;
+		GPUMemPage* res = UsedMem.front().second;
 		UsedMem.pop();
 		AvaliableMem.push(res);
 	}
@@ -107,8 +108,9 @@ void UploadMemAllocator::ReleaseAll() {
 	mCurrentOffset = 0;
 
 	for (auto& iter : MemPool) {
-		iter->Release();
+		iter.release();
 	}
-
+	
 	MemPool.clear();
 }
+

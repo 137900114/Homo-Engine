@@ -2,6 +2,7 @@
 #include "Device.h"
 #include "trivial.h"
 #include "CommandObjects.h"
+#include "DDSTextureLoader.h"
 using namespace Core;
 
 D3D12_RESOURCE_DESC GPUBuffer::DescribeResource() {
@@ -203,4 +204,319 @@ void UploadBuffer::CreatePlaced(UINT element_size, UINT element_num, ID3D12Heap*
 	ASSERT_HR(hr, "UploadBuffer::CreatePlaced : fail to create buffer");
 
 	mAddress = mResource->GetGPUVirtualAddress();
+}
+
+D3D12_RESOURCE_DESC PixelBuffer::DescribeResource(UINT16 mipNum,D3D12_RESOURCE_FLAGS flag, UINT sampleCount, UINT sampleQuality) {
+	D3D12_RESOURCE_DESC desc;
+	
+	desc.Format = format;
+	desc.Alignment = 0;
+	desc.DepthOrArraySize = arraySize;
+	desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	desc.Flags = flag;
+	desc.Height = height;
+	desc.Width = width;
+	desc.MipLevels = mipNum;
+	desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+
+	desc.SampleDesc.Count = sampleCount;
+	desc.SampleDesc.Quality = sampleQuality;
+
+	return desc;
+}
+
+//readbackbuffer can't and don't need to be initialized so the initial data is useless
+void ReadBackBuffer::Create(UINT element_size, UINT element_num, void* /*initial_data*/) {
+	Resource::Release();
+
+	this->element_size = element_size;
+	this->element_num = element_num;
+	this->buffer_size = element_num * element_size;
+
+	ID3D12Device* dev = Device::GetCurrentDevice();
+	HRESULT hr = dev->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK),
+		D3D12_HEAP_FLAG_NONE,
+		&DescribeResource(),
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr,IID_PPV_ARGS(&mResource));
+
+	ASSERT_HR(hr, "ReadBackBuffer::Create : fail to create resource");
+
+	mCurrentState = D3D12_RESOURCE_STATE_COPY_DEST;
+	mAddress = mResource->GetGPUVirtualAddress();
+
+	//readbackbuffer can't and don't need to be initialized so the initial data is useless
+}
+
+//readbackbuffer can't and don't need to be initialized so the initial data is useless
+void ReadBackBuffer::CreatePlaced(UINT element_size, UINT element_num,
+	ID3D12Heap* heap, UINT heap_offset,void* /*initial_data*/) {
+
+	Resource::Release();
+
+	this->element_size = element_size;
+	this->element_num = element_num;
+	this->buffer_size = element_num * element_size;
+
+	ID3D12Device* dev = Device::GetCurrentDevice();
+	HRESULT hr = dev->CreatePlacedResource(
+		heap, heap_offset,
+		&DescribeResource(),
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		nullptr, IID_PPV_ARGS(&mResource)
+	);
+
+	ASSERT_HR(hr,"ReadBackBuffer::CreatePlaced : fail to create resource");
+
+	mCurrentState = D3D12_RESOURCE_STATE_COPY_DEST;
+	mAddress = mResource->GetGPUVirtualAddress();
+	//readbackbuffer can't and don't need to be initialized so the initial data is useless
+}
+
+void ReadBackBuffer::Write2CPU(void* Dest,void (*writer)(void*,void*,UINT)) {
+	ASSERT_WARNING(!mResource, "ReadBackBuffer::Write2CPU : You should create the resource before writing");
+	if (!res_p)  Map();
+
+	ASSERT_WARNING(!res_p, "ReadBackBuffer::Write2CPU : Fail to map resource");
+	if (!writer)
+		memcpy(Dest, res_p, buffer_size);
+	else
+		writer(Dest, res_p, buffer_size);
+}
+
+//color buffer don't use mipmap(There is only one mipmap level)
+void ColorBuffer::Create(UINT width,UINT height,DXGI_FORMAT format,UINT sampleCount,UINT sampleQuality) {
+	Resource::Release();
+
+	this->width = width;
+	this->height = height;
+	this->arraySize = 1;
+	this->format = format;
+	this->sampleCount = sampleCount;
+
+	D3D12_RESOURCE_DESC desc = DescribeResource(1,
+		D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+		sampleCount, sampleQuality);
+
+	ID3D12Device* dev = Device::GetCurrentDevice();
+	HRESULT hr = dev->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&desc, D3D12_RESOURCE_STATE_COMMON,
+		nullptr, IID_PPV_ARGS(&mResource)
+	);
+
+	ASSERT_HR(hr, "ColorBuffer::Create : fail to create resource");
+
+	mCurrentState = D3D12_RESOURCE_STATE_COMMON;
+}
+
+void ColorBuffer::CreateRenderTargetView(D3D12_CPU_DESCRIPTOR_HANDLE handle) {
+	D3D12_RENDER_TARGET_VIEW_DESC desc = {};
+
+	desc.Format = format;
+	 if (arraySize > 1) {
+		desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+		desc.Texture2DArray.ArraySize = arraySize;
+		desc.Texture2DArray.FirstArraySlice = 0;
+		desc.Texture2DArray.MipSlice = 0;
+		desc.Texture2DArray.PlaneSlice = 0;
+	}else if (sampleCount > 1) {
+		desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
+	}
+	else {
+		desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
+		desc.Texture2D.MipSlice = 0;
+		desc.Texture2D.PlaneSlice = 0;
+	}
+
+	 ID3D12Device* dev = Device::GetCurrentDevice();
+	 dev->CreateRenderTargetView(mResource.Get(), &desc, handle);
+
+	 mRtv = handle;
+}
+
+void ColorBuffer::CreateShaderResourceView(D3D12_CPU_DESCRIPTOR_HANDLE handle) {
+	D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
+
+	if (arraySize > 1) {
+		desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+		desc.Texture2DArray.ArraySize = arraySize;
+		desc.Texture2DArray.FirstArraySlice = 0;
+		desc.Texture2DArray.MipLevels = 1;
+		desc.Texture2DArray.MostDetailedMip = 0;
+		desc.Texture2DArray.PlaneSlice = 0;
+	}
+	else if(sampleCount > 1){
+		desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
+	}
+	else {
+		desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		desc.Texture2D.MipLevels = 1;
+		desc.Texture2D.MostDetailedMip = 0;
+		desc.Texture2D.PlaneSlice = 0;
+	}
+
+	ID3D12Device* dev = Device::GetCurrentDevice();
+	dev->CreateShaderResourceView(
+		mResource.Get(), &desc, handle
+	);
+
+	mSrv = handle;
+}
+
+void ColorBuffer::CreateUnorderedAccessView(D3D12_CPU_DESCRIPTOR_HANDLE handle) {
+	ASSERT_WARNING(sampleCount > 1,"ColorBuffer::CreateUnorderedAccessView : texture use msaa can't create unordered access view");
+
+	D3D12_UNORDERED_ACCESS_VIEW_DESC desc = {};
+
+	if (arraySize > 1) {
+		desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+		desc.Texture2DArray.ArraySize = arraySize;
+		desc.Texture2DArray.FirstArraySlice = 0;
+		desc.Texture2DArray.MipSlice = 0;
+		desc.Texture2DArray.PlaneSlice = 0;
+	}
+	else {
+		desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+		desc.Texture2D.MipSlice = 0;
+		desc.Texture2D.PlaneSlice = 0;
+	}
+
+	ID3D12Device* dev = Device::GetCurrentDevice();
+	dev->CreateUnorderedAccessView(mResource.Get(),nullptr, &desc, handle);
+
+	mUav = handle;
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE ColorBuffer::GetRTV()const {
+	return mRtv;
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE ColorBuffer::GetSRV() const {
+	return mSrv;
+}
+
+D3D12_CPU_DESCRIPTOR_HANDLE ColorBuffer::GetUAV() const {
+	return mUav;
+}
+
+//color buffer don't use mipmap(There is only one mipmap level)
+void ColorBuffer::CreateArray(UINT Width, UINT Height, UINT ArraySize, DXGI_FORMAT Format, UINT sampleCount, UINT sampleQuality) {
+	Resource::Release();
+	
+	this->width = Width;
+	this->height = Height;
+	this->arraySize = ArraySize;
+	this->format = Format;
+	this->sampleCount = sampleCount;
+
+	D3D12_RESOURCE_DESC desc = DescribeResource(1,
+		D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+		sampleCount, sampleQuality);
+
+	ID3D12Device* dev = Device::GetCurrentDevice();
+	HRESULT hr = dev->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&desc, D3D12_RESOURCE_STATE_COMMON,
+		nullptr, IID_PPV_ARGS(&mResource)
+	);
+
+	ASSERT_HR(hr, "ColorBuffer::CreateArray : fail to create resource");
+
+	mCurrentState = D3D12_RESOURCE_STATE_COMMON;
+}
+
+void DepthBuffer::Create(UINT Width, UINT Height) {
+	Resource::Release();
+
+	this->width = Width;
+	this->height = Height;
+	this->format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	this->arraySize = 1;
+	this->mCurrentState = D3D12_RESOURCE_STATE_DEPTH_WRITE;
+
+	D3D12_RESOURCE_DESC desc = DescribeResource(1, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL, 1, 0);
+	ID3D12Device* dev = Device::GetCurrentDevice();
+
+	D3D12_CLEAR_VALUE val = {};
+	val.DepthStencil.Depth = 1.f;
+	val.DepthStencil.Stencil = 0.f;
+	val.Format = format;
+
+	HRESULT hr = dev->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&desc, mCurrentState, &val,
+		IID_PPV_ARGS(&mResource)
+	);
+
+	ASSERT_HR(hr, "DepthBuffer::Create : fail to create resource");
+}
+
+void DepthBuffer::CreateDepthStencilView(D3D12_CPU_DESCRIPTOR_HANDLE dsv) {
+	D3D12_DEPTH_STENCIL_VIEW_DESC desc;
+	desc.Flags = D3D12_DSV_FLAG_NONE;
+	desc.Format = format;
+	desc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+	desc.Texture2D.MipSlice = 0;
+
+	ID3D12Device* dev = Device::GetCurrentDevice();
+	dev->CreateDepthStencilView(mResource.Get(),&desc, dsv);
+
+	mDsv = dsv;
+}
+
+void DepthBuffer::CreateDepthShaderResourceView(D3D12_CPU_DESCRIPTOR_HANDLE srv) {
+	D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
+	desc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+	desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	desc.Texture2D.MipLevels = 1;
+	desc.Texture2D.MostDetailedMip = 0;
+	desc.Texture2D.PlaneSlice = 0;
+
+	ID3D12Device* dev = Device::GetCurrentDevice();
+	dev->CreateShaderResourceView(mResource.Get(),&desc, srv);
+
+	mDepthSrv = srv;
+}
+
+void DepthBuffer::CreateStencilShaderResourceView(D3D12_CPU_DESCRIPTOR_HANDLE srv) {
+	D3D12_SHADER_RESOURCE_VIEW_DESC desc = {};
+	desc.Format = DXGI_FORMAT_X24_TYPELESS_G8_UINT;
+	desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	desc.Texture2D.MipLevels = 1;
+	desc.Texture2D.MostDetailedMip = 0;
+	desc.Texture2D.PlaneSlice = 0;
+	
+	ID3D12Device* dev = Device::GetCurrentDevice();
+	dev->CreateShaderResourceView(mResource.Get(), &desc, srv);
+
+	mStencilSrv = srv;
+}
+
+void ColorBuffer::CreateFromSwapChain(IDXGISwapChain* sc,UINT index) {
+	Resource::Release();
+
+	ID3D12Resource* BaseRes;
+	HRESULT hr = sc->GetBuffer(index,IID_PPV_ARGS(&BaseRes));
+	ASSERT_HR(hr,"ColorBuffer::CreateFromSwapChain : Fail to get buffer from swap chain.\n"
+		"May be you should check whether the index is outof bounary!");
+
+
+	mResource.Attach(BaseRes);
+	D3D12_RESOURCE_DESC desc = BaseRes->GetDesc();
+	this->width = desc.Width;
+	this->height = desc.Height;
+	this->arraySize = desc.DepthOrArraySize;
+	//we can't get the resource's gpu virtual address if the resource's type is not buffer
+	//this->mAddress = mResource->GetGPUVirtualAddress();
+	this->format = desc.Format;
+	this->sampleCount = desc.SampleDesc.Count;
+	//resource from swap chain 's intial state must be PRESENT
+	this->mCurrentState = D3D12_RESOURCE_STATE_PRESENT;
 }

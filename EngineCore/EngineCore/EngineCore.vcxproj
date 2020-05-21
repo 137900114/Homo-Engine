@@ -150,11 +150,13 @@
     <ClInclude Include="..\TestBox\UploadBuffer.h" />
     <ClInclude Include="CommandObjects.h" />
     <ClInclude Include="common.h" />
+    <ClInclude Include="DDSTextureLoader.h" />
     <ClInclude Include="Device.h" />
     <ClInclude Include="DynamicDescriptorHeap.h" />
     <ClInclude Include="GPUBuffer.h" />
     <ClInclude Include="GPUMemory.h" />
-    <ClInclude Include="Math.h" />
+    <ClInclude Include="HomoCore.h" />
+    <ClInclude Include="HomoMath.h" />
     <ClInclude Include="PipelineStateObject.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="RootSignature.h" />
@@ -168,15 +170,16 @@
     <ClCompile Include="..\TestBox\GameTimer.cpp" />
     <ClCompile Include="..\TestBox\MathHelper.cpp" />
     <ClCompile Include="CommandObject.cpp" />
+    <ClCompile Include="DDSTextureLoader.cpp" />
     <ClCompile Include="Device.cpp" />
     <ClCompile Include="DynamicDescriptorHeap.cpp" />
     <ClCompile Include="GPUBuffer.cpp" />
     <ClCompile Include="GPUMemory.cpp" />
+    <ClCompile Include="HomoCore.cpp" />
     <ClCompile Include="PipelineStateObject.cpp" />
     <ClCompile Include="RootSignature.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="Trash.txt" />
     <Text Include="TODO.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

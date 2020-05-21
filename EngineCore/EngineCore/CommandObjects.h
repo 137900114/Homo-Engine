@@ -75,7 +75,7 @@ namespace Core {
 
 	};
 		
-	class CommandListManager {
+	class CommandQueueManager {
 	private:
 
 		CommandQueue mGraphicQueue;
@@ -86,7 +86,7 @@ namespace Core {
 			mComputeQueue.Initialize();
 		}
 		
-		CommandListManager():
+		CommandQueueManager():
 		mGraphicQueue(D3D12_COMMAND_LIST_TYPE_DIRECT),
 		mComputeQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE)
 		{}
@@ -118,7 +118,7 @@ namespace Core {
 	};
 
 	
-	class CommandBufferManager;
+	class CommandBuffer;
 	class GraphicCommandBuffer;
 
 	//这里先默认CommandBuffer的type是DIRECT
@@ -126,7 +126,7 @@ namespace Core {
 
 	class CommandBufferManager {
 	private:
-		CommandListManager* mLisManager;
+		CommandQueueManager* mLisManager;
 		std::vector<unique_ptr<CommandBuffer>> mCommandBufferPool;
 		std::queue<CommandBuffer*> mAvaliableCommandBuffers;
 		static CommandBufferManager manager;
@@ -137,7 +137,7 @@ namespace Core {
 
 	public:
 
-		static void Initialize(CommandListManager* mLisManager) {
+		static void Initialize(CommandQueueManager* mLisManager) {
 			manager.mLisManager = mLisManager;
 		}
 
@@ -160,7 +160,7 @@ namespace Core {
 
 		ID3D12GraphicsCommandList* cmdLis;
 		ID3D12CommandAllocator* cmdAlloc;
-		CommandListManager* manager;
+		CommandQueueManager* manager;
 		
 		DynamicDescriptorHeap mCBVRSVUAVHeap;
 
@@ -170,7 +170,7 @@ namespace Core {
 
 		CommandBuffer(ID3D12GraphicsCommandList* cmdLis,
 			ID3D12CommandAllocator* cmdAlloc,
-			CommandListManager* manager) :
+			CommandQueueManager* manager) :
 			mCBVRSVUAVHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV),
 			cmdLis(cmdLis),
 			cmdAlloc(cmdAlloc),
@@ -218,6 +218,10 @@ namespace Core {
 
 		inline GraphicCommandBuffer& GetGraphicBuffer() {
 			return *reinterpret_cast<GraphicCommandBuffer*>(this);
+		}
+
+		inline ID3D12GraphicsCommandList* GetCommandList() {
+			return this->cmdLis;
 		}
 		/*
 		inline ComputeCommandBuffer& GetComputeBuffer() {
@@ -278,6 +282,7 @@ namespace Core {
 			cmdLis->ClearDepthStencilView(dsv, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, depth, stencil, 0, nullptr);
 		}
 
+	
 	};
 
 	/*

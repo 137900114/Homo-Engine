@@ -86,7 +86,8 @@ namespace Core {
 	//-------需要在AllocateDescriptorHeap的时候需要给出对应的flag类型-------//
 
 
-	//分配临时DescirptorHeapHandle,这些handle是gpu不可见的
+	//TemporaryDescriptorHeap is used to allocate descriptor that used for create views.
+	//These descriptors are gpu invisible and can't be used to bind on render pipeline.
 	class TemporaryDescriptorHeap {
 	private:
 		ID3D12DescriptorHeap* m_CurrentHeap;
@@ -142,7 +143,7 @@ namespace Core {
 		StaticDescriptorHeap(
 			D3D12_DESCRIPTOR_HEAP_TYPE Type,UINT HeapSize,
 			D3D12_DESCRIPTOR_HEAP_FLAGS Flag = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE,
-			UINT NodeMask = 1):
+			UINT NodeMask = 0):
 		m_HeapSize(HeapSize),m_Type(Type),m_Flag(Flag),m_NodeMask(NodeMask){
 			CreateDescriptorHeap();
 			m_DescriptorOffsetSize = Device::GetDescriptorIncreamentHandleOffset(m_Type);
@@ -157,6 +158,8 @@ namespace Core {
 		void Reset() {
 			m_CurrentOffset = 0;
 		}
+
+		UINT GetCurrentOffset() { return m_CurrentOffset; }
 	};
 
 

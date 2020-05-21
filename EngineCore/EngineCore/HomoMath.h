@@ -8,7 +8,7 @@
 //3.四元数
 //4.解方程辅助
 
-namespace Math {
+namespace HomoMath {
 	//通过一些tag来获得特殊的数学对象
 
 	struct ZERO {};
@@ -24,7 +24,7 @@ namespace Math {
 	}
 }
 
-namespace Math {
+namespace HomoMath {
 	//1.Math的Vector向量部分
 
 	using namespace DirectX;

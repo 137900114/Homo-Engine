@@ -7,7 +7,7 @@ namespace Core {
 	class Resource {
 		friend CommandBuffer;
 	public:
-		virtual ~Resource() {}
+		virtual ~Resource() { Release(); }
 
 		Resource() :
 		mResource(nullptr),
@@ -28,8 +28,8 @@ namespace Core {
 			mCurrentState = D3D12_RESOURCE_STATE_COMMON;
 		}
 
-		ID3D12Resource* Get() { return mResource.Get(); }
-		const ID3D12Resource* Get() const { return mResource.Get(); }
+		ID3D12Resource* Get() const { return mResource.Get(); }
+		//const ID3D12Resource* Get() const { return mResource.Get(); }
 
 		D3D12_GPU_VIRTUAL_ADDRESS GetVirtualAddress() const { return mAddress; }
 

@@ -16,6 +16,7 @@
 #include "..//EngineCore/DynamicDescriptorHeap.h"
 #include "..//EngineCore/Device.h"
 #include "../EngineCore/GPUBuffer.h"
+#include "../EngineCore/HomoCore.h"
 
 using namespace DirectX;
 using namespace DirectX::PackedVector;
@@ -90,14 +91,6 @@ private:
 
 std::unique_ptr<BoxApp> app = nullptr;
 
-ID3D12Device* Core::Device::GetCurrentDevice() {
-	return app->md3dDevice.Get();
-}
-
-UINT Core::Device::GetDescriptorIncreamentHandleOffset(D3D12_DESCRIPTOR_HEAP_TYPE type) {
-	return app->md3dDevice->GetDescriptorHandleIncrementSize(type);
-}
-
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 	PSTR cmdLine, int showCmd)
 {
@@ -127,6 +120,7 @@ BoxApp::BoxApp(HINSTANCE hInstance)
 
 BoxApp::~BoxApp()
 {
+	D3DApp::~D3DApp();
 }
 
 bool BoxApp::Initialize()
@@ -180,7 +174,11 @@ void BoxApp::Update(const GameTimer& gt)
 void BoxApp::Draw(const GameTimer& gt)
 {
 	GraphicCommandBuffer& buffer = CommandBuffer::Start().GetGraphicBuffer();
-	buffer.SetViewPortAndScissorRect(mScreenViewport,mScissorRect);
+	buffer.SetViewPortAndScissorRect(
+		HomoEngineCore::GetViewPort(),
+		HomoEngineCore::GetSissorRect()
+	);
+
 	buffer.TransitionResource(CurrentBackBuffer(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	
 	float f[] = { .4,1.,1.,1. };
@@ -203,9 +201,7 @@ void BoxApp::Draw(const GameTimer& gt)
 	buffer.TransitionResource(CurrentBackBuffer(), D3D12_RESOURCE_STATE_RENDER_TARGET,D3D12_RESOURCE_STATE_PRESENT);
 	buffer.End();
 
-	ThrowIfFailed(mSwapChain->Present(0, 0));
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
-
+	HomoEngineCore::PresentAndSwapBackBuffer();
 }
 
 void BoxApp::OnMouseDown(WPARAM btnState, int x, int y)

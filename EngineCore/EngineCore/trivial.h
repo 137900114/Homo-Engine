@@ -41,13 +41,13 @@ inline void fail_and_exit(bool expression,const wchar_t* str) {
 #define ASSERT_HR(hr,str)\
 	if(FAILED(hr)){\
 		::OutputDebugStringA("hr failed in " CONNECT_STR(__FILE__)"at" CONNECT_STR(__LINE__) "\n details:");\
-		::OutputDebugStringA(str);\
+		::OutputDebugStringA(str"\n");\
 		__debugbreak();\
 	}
 #define ASSERT_WARNING(exp,str)\
 	if(exp){\
 		::OutputDebugStringA("hr failed in " CONNECT_STR(__FILE__)"at" CONNECT_STR(__LINE__) "\n details:");\
-		::OutputDebugStringA(str);\
+		::OutputDebugStringA(str"\n");\
 		__debugbreak();\
 	}
 #else
