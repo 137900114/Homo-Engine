@@ -1,9 +1,0 @@
-1.Encapsulate the Direct 3D API and windows API
-	&（还剩下texture没有封装,还有BufferManager）1.Pixel buffers 用来封装可以作为图像的资源如RTV，贴图，DSV
-
-	*UploadMemAllocator 有问题，需要修改!!!
-
-	*2.封装ID3D12Device,ID3DSwapChain,ID3DFactory到Device
-	3.封装ComputeCommandBuffer，并把Example2移植到项目中
-	4.封装创建窗口，消息循环等函数到WindowsInteration
-
