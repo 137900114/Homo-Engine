@@ -7,6 +7,16 @@
 
 //build the modules work together
 
+class Test : public Game::IRuntimeModule {
+public:
+	bool initialize();
+	void tick() {}
+	void finalize() {}
+private:
+
+};
+
+
 namespace Game {
 	MemoryModule mem;
 	MemoryModule* gMemory = &mem;
@@ -21,12 +31,22 @@ namespace Game {
 
 	InputBuffer gInput;
 
+	SceneLoader gSceneLoader;
+	Test t;
+
 	Timer gTimer;
 
 #ifdef _WIN64
-	IRuntimeModule* moduleList[] = {&mem,gFileLoader,gGraphic,&gTimer,&gInput};
+	IRuntimeModule* moduleList[] = { &mem,gFileLoader,gGraphic,&t,&gTimer,&gInput };
 	WindowsApplication wapp(1200, 750, moduleList, _countof(moduleList));
 
 	IApplication* app = &wapp;
 #endif
+}
+
+
+bool Test::initialize() {
+	Game::Scene* scene = Game::gSceneLoader.loadScene("2.obj");
+	Game::gGraphic->drawSingleMesh(scene->meshs["Suzanne"]);
+	return true;
 }

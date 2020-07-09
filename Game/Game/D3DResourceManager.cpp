@@ -13,6 +13,8 @@ namespace Game {
 			D3D12_RESOURCE_STATES initState,const D3D12_CLEAR_VALUE* value = nullptr);
 
 		void ReleaseResource(ComPtr<ID3D12Resource>& ptr);
+
+		void finalize() {}
 	private:
 		ID3D12Device* device;
 	};
@@ -52,10 +54,7 @@ namespace Game {
 
 	
 	void CommitAllocator::ReleaseResource(ComPtr<ID3D12Resource>& ptr) {
-		if (ptr != nullptr) {
-			ptr->Release();
-			ptr = nullptr;
-		}
+		ptr = nullptr;
 	}
 
 	void D3DResourceManager::initialize(ID3D12Device* dev) {
@@ -64,7 +63,7 @@ namespace Game {
 	}
 
 
-	UUID D3DResourceManager::uploadStatic(Buffer& buf, D3D12_RESOURCE_DESC desc, 
+	UUID D3DResourceManager::uploadStatic(void* data, size_t size, D3D12_RESOURCE_DESC desc,
 		D3D12_RESOURCE_STATES initState,bool isConstantBuffer) {
 		if (isConstantBuffer) {
 			//round up the buffer because constant buffer has to be the multiple of 256
@@ -82,7 +81,7 @@ namespace Game {
 		}
 
 		res.uploadBuffer->Map(0, nullptr,&res.bufferWriter);
-		memcpy(res.bufferWriter, buf.data, buf.size);
+		memcpy(res.bufferWriter, data, size);
 
 		res.uploaded = false;
 		res.currState = initState;
@@ -96,10 +95,11 @@ namespace Game {
 		return newID;
 	}
 
-	UUID D3DResourceManager::uploadDynamic(Buffer& buf,D3D12_RESOURCE_DESC desc,bool isConstantBuffer) {
+	UUID D3DResourceManager::uploadDynamic(void* data, size_t size,D3D12_RESOURCE_DESC desc,bool isConstantBuffer) {
 		if (isConstantBuffer) {
 			//round up the buffer because constant buffer has to be the multiple of 256
 			desc.Width = (desc.Width + 255) & ~(255);
+			size = desc.Width;
 		}
 
 		DynamicResource res;
@@ -111,9 +111,9 @@ namespace Game {
 		}
 
 		res.buffer->Map(0, nullptr,& res.bufferWriter);
-		res.size = buf.size;
+		res.size = desc.Width;
 
-		memcpy(res.bufferWriter,buf.data,buf.size);
+		memcpy(res.bufferWriter, data, size);
 		
 		UUID newID = Game::UUID::generate(); 
 		while (staticResource.find(newID) != staticResource.end()
@@ -145,23 +145,27 @@ namespace Game {
 	}
 
 
-	D3DResourceManager::WRITE_STATE D3DResourceManager::write(UUID token,Buffer& buf) {
+	D3DResourceManager::WRITE_STATE D3DResourceManager::write(UUID token, void* data, size_t size) {
 		auto diter = dynamicResource.find(token);
 		if (diter == dynamicResource.end()) {
 			return NOT_FOUND;
 		}
 		//if the original buffer capacity is smaller than the buffer size
 		//we throw a invaild buffer size state code
-		else if (diter->second.size < buf.size) {
+		else if (diter->second.size < size) {
 			return INVAILD_BUFFER_SIZE;
 		}
 		else {
-			memcpy(diter->second.bufferWriter, buf.data, buf.size);
+			memcpy(diter->second.bufferWriter, data, size);
 			return SUCCESS;
 		}
 	}
 
 	bool D3DResourceManager::releaseResource(UUID token) {
+		//release a empty token is vaild.we do nothing and return a true
+		if (token == UUID::invaild)
+			return true;
+
 		auto siter = staticResource.find(token);
 		if (siter != staticResource.end()) {
 			gpuAllocator.ReleaseResource(siter->second.buffer);
@@ -201,6 +205,8 @@ namespace Game {
 			}
 		}
 
+		if (barriers.empty()) return;
+
 		cmdLis->ResourceBarrier(barriers.size(), barriers.data());
 
 		//distribute copy commands
@@ -224,6 +230,7 @@ namespace Game {
 		cmdLis->ResourceBarrier(barriers.size(), barriers.data());
 
 		barriers.clear();
+		uploadWaitingList.clear();
 	}
 
 
@@ -284,5 +291,22 @@ namespace Game {
 		}
 
 		return true;
+	}
+
+	void D3DResourceManager::finalize() {
+		for (auto& item : staticResource) {
+			gpuAllocator.ReleaseResource(item.second.buffer);
+			if (item.second.uploadBuffer != nullptr) {
+				item.second.uploadBuffer->Unmap(0,nullptr);
+				gpuAllocator.ReleaseResource(item.second.uploadBuffer);
+			}
+		}
+
+		for (auto& item : dynamicResource) {
+			item.second.buffer->Unmap(0,nullptr);
+			gpuAllocator.ReleaseResource(item.second.buffer);
+		}
+
+		gpuAllocator.finalize();
 	}
 }

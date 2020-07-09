@@ -50,6 +50,10 @@ namespace Game {
             return !memcmp(value,uuid.value,sizeof(value));
         }
 
+        bool operator!=(const UUID& uuid) const{
+            return memcmp(value,uuid.value,sizeof(value));
+        }
+
         bool operator<(const UUID& uuid)  const {
            return  memcmp(value,uuid.value,sizeof(value)) < 0;
         }

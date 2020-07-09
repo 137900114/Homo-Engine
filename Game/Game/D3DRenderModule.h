@@ -11,6 +11,7 @@
 #include "Matrix.h"
 #include "d3dCommon.h"
 #include "ShaderLoader.h"
+#include "D3DResourceManager.h"
 
 #pragma comment(lib,"d3d12.lib")
 #pragma comment(lib,"dxgi.lib")
@@ -46,8 +47,12 @@ namespace Game {
 		void waitForFenceValue(uint64_t fence);
 
 		bool initialize2D();
-		bool initializeDefault();
+		bool initializeSingleMesh();
 		void draw2D();
+
+		void drawSingleMesh();
+		void updateSingleMeshData();
+		void initializeSingleMeshData();
 
 		int width;
 		int height;
@@ -93,34 +98,70 @@ namespace Game {
 		std::unordered_map<std::string, std::unique_ptr<GraphicPSO>> mPsos;
 		std::unordered_map<std::string, ComPtr<ID3DBlob>> mShaderByteCodes;
 		std::unordered_map<std::string, ComPtr<ID3D12RootSignature>> mRootSignatures;
-
-		//The z value of the position specifies the order of the drawing
+		
 		ShaderLoader mShaderLoader;
+		D3DResourceManager mResourceManager;
 		
-		
+		//The z value of the position specifies the order of the drawing
 		struct Vertex2D{
 			Vector3 Position;
 			Vector4 Color;
 		};
 
+		//the constant buffer will be aligned by 4 float data
+		struct LightPass {
+			struct {
+				Vector3 lightDirection;
+				float paddle;
+				Vector4 lightIntensity;
+			}Light [1];
+
+			Vector3 ambient;
+		};
+
+		struct CameraPass {
+			Mat4x4 projection;
+			Mat4x4 invProjection;
+			float timeLine;
+		};
+
+		struct ObjectPass {
+			Mat4x4 world;
+			Mat4x4 transInvWorld;
+		};
+
 		struct {
 			Mat4x4 Proj;
-			ComPtr<ID3D12Resource> mUploadProj;
-			void* projBufferWriter;
+			UUID projResource;
 
 			std::vector<Vertex2D> vertexList;
-			ComPtr<ID3D12Resource> mUploadVertex;
+			UUID uploadVertex;
 			size_t currVSize;
-			void* vertexBufferWriter;
 		} Data2D;
 
-		//impelement of draw single mesh;
 		struct {
-			Mesh* currentMesh;
-			ComPtr<ID3D12Resource> ConsPass;
-			ComPtr<ID3D12Resource> LightPass;
+			Scene* currScene;
+
+		} Data3D;
+
+		//this pass can only be used to test whether the mesh data 
+		//and render system doing well currently we don't consider 
+		//material
+		struct {
+			Mesh* mesh = nullptr;
+			SceneMaterial* material = nullptr;
+			ObjectPass objectData;
+			UUID gpuTransform;
+			float dis;
 			
-			bool activated;
-		} Default3D;
+			const int lightPassNum = 1;
+			LightPass lightData;
+			UUID gpuLightData;
+			float lightu;
+
+			CameraPass cameraData;
+			UUID gpuCameraData;
+		}SingleMesh;
+
 	};
 }

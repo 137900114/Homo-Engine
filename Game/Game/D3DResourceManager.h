@@ -27,16 +27,27 @@ namespace Game {
 
 	public:
 
-		D3DResourceManager(ID3D12Device* device) {}
+		D3DResourceManager():mDevice(nullptr) {}
 
 		//the resource uploaded staticly can't be changed,if the resource is a constant buffer we have to 
 		//aliase it to 256 so we need to inform the resource manager by passing a true to parameter 'isConstantBuffer'
 		//the function will return a invaild uuid when the operation fails
-		UUID uploadStatic(Buffer& buf,D3D12_RESOURCE_DESC desc,D3D12_RESOURCE_STATES initState,bool isConstantBuffer = false);
+		UUID uploadStatic(void* data,size_t size,D3D12_RESOURCE_DESC desc,D3D12_RESOURCE_STATES initState,bool isConstantBuffer = false);
 		//the resources uploaded dynamicly can be changed by calling write. if the resource is a constant buffer we have to
 		//aliase it to 256 so we need to inform the resource manager by passing a true to parameter 'isConstantBuffer'
 		//the function will return a invaild uuid when the operation fails
-		UUID uploadDynamic(Buffer& buf,D3D12_RESOURCE_DESC desc,bool isConstantBuffer = false);
+		UUID uploadDynamic(void* data, size_t size,D3D12_RESOURCE_DESC desc,bool isConstantBuffer = false);
+
+		//the resource uploaded staticly can't be changed,if the resource is a constant buffer we have to 
+		//aliase it to 256 so we need to inform the resource manager by passing a true to parameter 'isConstantBuffer'
+		//the function will return a invaild uuid when the operation fails
+		inline UUID uploadStatic(Buffer& data,D3D12_RESOURCE_DESC desc,D3D12_RESOURCE_STATES initState,bool isConstantBuffer = false) {
+			return uploadStatic(data.data,data.size,desc,initState,isConstantBuffer);
+		}
+
+		inline UUID uploadDynamic(Buffer& data,D3D12_RESOURCE_DESC desc,bool isConstantBuffer = false) {
+			return uploadDynamic(data.data, data.size, desc, isConstantBuffer);
+		}
 
 		//copy the data from source buffer to target buffer
 		//the source and target buffer must have transisted too corresponding state
@@ -57,13 +68,15 @@ namespace Game {
 			INVAILD_BUFFER_SIZE = 2
 		};
 
-		WRITE_STATE write(UUID token,Buffer& buf);
+		WRITE_STATE write(UUID token, void* data, size_t size);
 
 		ID3D12Resource* getResource(UUID token);
 
 		void initialize(ID3D12Device* dev);
 		//the resource manager should be tick on every frame
 		void tick(ID3D12GraphicsCommandList* cmdLis);
+
+		void finalize();
 
 	private:
 

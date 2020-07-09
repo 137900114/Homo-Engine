@@ -65,16 +65,33 @@ namespace Game {
 		float a[4][4];
 
 		Mat4x4() { memset(a, 0, sizeof(float) * 16); }
-		Mat4x4(const float* f) { memcpy(a, f, sizeof(float) * 16); }
+		Mat4x4(const float* f) {
+			/*init(f[0] ,f[1] ,f[2] ,f[3] ,
+				 f[4] ,f[5] ,f[6] ,f[7] ,
+				 f[8] ,f[9] ,f[10],f[11],
+				 f[12],f[13],f[14],f[15]);*/
+			memcpy(a,f,sizeof(float) * 16);
+		}
 		Mat4x4(float a00,float a01,float a02,float a03,
 			float a10, float a11, float a12, float a13,
 			float a20, float a21, float a22, float a23,
 			float a30, float a31, float a32, float a33) {
 
-			a[0][0] = a00, a[0][1] = a01, a[0][2] = a02, a[0][3] = a03,
-			a[1][0] = a10, a[1][1] = a11, a[1][2] = a12, a[1][3] = a13,
-			a[2][0] = a10, a[2][1] = a21, a[2][2] = a22, a[2][3] = a23,
-			a[3][0] = a30, a[3][1] = a31, a[3][2] = a32, a[3][3] = a33;
+			init(a00,a01,a02,a03,
+				 a10,a11,a12,a13,
+				 a20,a21,a22,a23,
+				 a30,a31,a32,a33);
+		}
+
+		void init(float a00, float a01, float a02, float a03,
+			float a10, float a11, float a12, float a13,
+			float a20, float a21, float a22, float a23,
+			float a30, float a31, float a32, float a33) {
+
+			    a[0][0] = a00, a[0][1] = a01, a[0][2] = a02, a[0][3] = a03,
+				a[1][0] = a10, a[1][1] = a11, a[1][2] = a12, a[1][3] = a13,
+				a[2][0] = a10, a[2][1] = a21, a[2][2] = a22, a[2][3] = a23,
+				a[3][0] = a30, a[3][1] = a31, a[3][2] = a32, a[3][3] = a33;
 		}
 
 

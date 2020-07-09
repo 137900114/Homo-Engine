@@ -2,6 +2,8 @@
 #include "WindowsApplication.h"
 #include "Common.h"
 #include <DirectXColors.h>
+#include "Timer.h"
+#include "InputBuffer.h"
 
 using namespace Game;
 
@@ -12,6 +14,8 @@ using namespace Game;
 namespace Game {
 	extern IApplication* app;
 	extern FileLoader* gFileLoader;
+	extern Timer gTimer;
+	extern InputBuffer gInput;
 }
 
 void GetHardwareAdapter(IDXGIFactory4* factory,IDXGIAdapter1** adapter) {
@@ -143,6 +147,8 @@ bool D3DRenderModule::initialize() {
 	hr = D3D12CreateDevice(adapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&mDevice));
 	HR_FAIL(hr, "d3d12 error : fail to create device");
 
+	mResourceManager.initialize(mDevice.Get());
+
 	D3D12_COMMAND_QUEUE_DESC desc = {};
 	desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
 	desc.NodeMask = 0;
@@ -220,12 +226,12 @@ bool D3DRenderModule::initialize() {
 		return false;
 	}
 
-	/*
-	if (!initializeDefault()) {
+	
+	if (!initializeSingleMesh()) {
 		Log("d3d12 error : fail to initialize 3D default render module\n");
 		return false;
 	}
-	*/
+	
 
 
 	viewPort.Width = width;
@@ -240,6 +246,10 @@ bool D3DRenderModule::initialize() {
 	sissorRect.left = 0;
 	sissorRect.right = width;
 
+	SingleMesh.gpuLightData = UUID::invaild;
+	SingleMesh.gpuCameraData = UUID::invaild;
+	SingleMesh.gpuTransform = UUID::invaild;
+
 	return true;
 }
 
@@ -247,6 +257,8 @@ void D3DRenderModule::tick() {
 	//------------------------------------//
 	if (mFence->GetCompletedValue() < fenceVal) 
 		return;
+
+	updateSingleMeshData();
 
 	mCmdAllc->Reset();
 	mCmdList->Reset(mCmdAllc.Get(), nullptr);
@@ -257,6 +269,8 @@ void D3DRenderModule::tick() {
 	mCmdList->ResourceBarrier(1,&CD3DX12_RESOURCE_BARRIER::Transition(
 		mBackBuffers[mCurrentFrameIndex].Get(),D3D12_RESOURCE_STATE_PRESENT,
 		D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+	mResourceManager.tick(mCmdList.Get());
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
 	rtvHandle.Offset(mCurrentFrameIndex,rtvDescriptorIncreament);
@@ -272,6 +286,8 @@ void D3DRenderModule::tick() {
 
 	//drawing 2d objects
 	draw2D();
+	//draw single pass object
+	drawSingleMesh();
 
 	mCmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
 		mBackBuffers[mCurrentFrameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -314,11 +330,13 @@ void D3DRenderModule::finalize() {
 	//--------------------//
 
 	mFence = nullptr;
-
+	/*
 	Data2D.mUploadProj->Unmap(0,nullptr);
 	if(Data2D.mUploadVertex)
 		Data2D.mUploadVertex->Unmap(0,nullptr);
+	*/
 
+	mResourceManager.finalize();
 	CloseHandle(waitEvent);
 }
 
@@ -395,7 +413,8 @@ void D3DRenderModule::set2DViewPort(Vector2 center,float _height) {
 		0         ,0          ,0,1
 	).T();
 
-	memcpy(Data2D.projBufferWriter, &Data2D.Proj, sizeof(Data2D.Proj));
+	//memcpy(Data2D.projBufferWriter, &Data2D.Proj, sizeof(Data2D.Proj));
+	mResourceManager.write(Data2D.projResource,&Data2D.Proj,sizeof(Data2D.Proj));
 }
 
 bool D3DRenderModule::initialize2D() {
@@ -403,47 +422,6 @@ bool D3DRenderModule::initialize2D() {
 	//The shader have not been compiled.Find the source code and compile them 
 	Buffer shader2D;
 	ComPtr<ID3DBlob> VS2D, PS2D;
-
-	/*{
-		if (!gFileLoader->FileReadAndClose("Geometry2D.hlsl", shader2D,READ_CHARACTERS)) {
-			Log("Unable to find file Geometry2D.hlsl");
-			return false;
-		}
-
-		auto compile = [](Buffer& code, const char* entry,
-			const char* target, ID3DBlob** byteCode) -> bool {
-				ComPtr<ID3DBlob> errorCode;
-
-				UINT compileFlag = 0;
-#ifdef _DEBUG
-				compileFlag = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#endif
-
-				HRESULT hr = D3DCompile(code.data, code.size,
-					nullptr, nullptr,
-					D3D_COMPILE_STANDARD_FILE_INCLUDE,
-					entry, target, compileFlag, 0,
-					byteCode, &errorCode);
-
-				if (FAILED(hr)) {
-					Log("fail to compile entry %s target %s , reason : %s \n",
-						entry, target, errorCode->GetBufferPointer());
-					return false;
-				}
-
-				return true;
-		};
-
-
-		if (!compile(shader2D, "VS", "vs_5_0", &VS2D) || !compile(shader2D, "PS", "ps_5_0", &PS2D))
-			return false;
-		
-
-		//gFileLoader->FileWriteAndClose("Shaders\\Geometry2D_VS.vs", VS2D->GetBufferPointer(),VS2D->GetBufferSize(),WRITE_BINARY);
-		//gFileLoader->FileWriteAndClose("Shaders\\Geometry2D_PS.ps", PS2D->GetBufferPointer(),PS2D->GetBufferSize(),WRITE_BINARY);
-
-		//VS2D = nullptr, PS2D = nullptr;
-	}*/
 
 	VS2D = mShaderLoader.CompileFile("Geometry2D.hlsl", "VS", VS);
 	PS2D = mShaderLoader.CompileFile("Geometry2D.hlsl", "PS", PS);
@@ -496,23 +474,13 @@ bool D3DRenderModule::initialize2D() {
 
 	//initialize the data part
 	Data2D.Proj = Mat4x4::I();
-	const uint32_t bufferSize = (sizeof(Mat4x4) + 255) & (~255);
-	
-	//The size of the constant buffer must be multiple of the 256
-	mDevice->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-		D3D12_HEAP_FLAG_NONE,
-		&CD3DX12_RESOURCE_DESC::Buffer(bufferSize),
-		D3D12_RESOURCE_STATE_GENERIC_READ,
-		nullptr,
-		IID_PPV_ARGS(&Data2D.mUploadProj)
-	);
 
-	Data2D.mUploadProj->Map(0,nullptr,&Data2D.projBufferWriter);
-	memcpy(Data2D.projBufferWriter, &Data2D.Proj, sizeof(Mat4x4));
+	Data2D.projResource = mResourceManager.uploadDynamic(&Data2D.Proj, sizeof(Data2D.Proj), 
+		CD3DX12_RESOURCE_DESC::Buffer(sizeof(Data2D.Proj)),
+		true);
 
 	Data2D.currVSize = 0;
-	Data2D.mUploadVertex = nullptr;
+	//Data2D.mUploadVertex = nullptr;
 	return true;
 }
 
@@ -524,37 +492,29 @@ void D3DRenderModule::draw2D() {
 
 	if (!Data2D.vertexList.size()) return;
 
-	size_t vSize = Data2D.vertexList.size();
-
-	if (Data2D.currVSize < Data2D.vertexList.size()) {
-		Data2D.mUploadVertex = nullptr;
-
-		Data2D.currVSize = Data2D.vertexList.size() * 2;
-
-		mDevice->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(sizeof(Vertex2D) * Data2D.currVSize),
-			D3D12_RESOURCE_STATE_GENERIC_READ,
-			nullptr,IID_PPV_ARGS(&Data2D.mUploadVertex)
-		);
-
-		Data2D.mUploadVertex->Map(0, nullptr, &Data2D.vertexBufferWriter);
-	}
-
-	//Upload vertex data to the vertex buffer
-	memcpy(Data2D.vertexBufferWriter,Data2D.vertexList.data(),
-		sizeof(Vertex2D) * vSize);
+	size_t vSize = Data2D.vertexList.size() * sizeof(Vertex2D);
 
 	//draw 2d items
+	if (Data2D.currVSize < Data2D.vertexList.size()) {
+		mResourceManager.releaseResource(Data2D.uploadVertex);
+		Data2D.currVSize = Data2D.vertexList.size() * 2;
+
+		Data2D.uploadVertex = mResourceManager.uploadDynamic(Data2D.vertexList.data(), vSize,
+			CD3DX12_RESOURCE_DESC::Buffer(sizeof(Vertex2D) * Data2D.currVSize));
+	}
+	else {
+		mResourceManager.write(Data2D.uploadVertex,Data2D.vertexList.data(), vSize);
+	}
+
 	mCmdList->SetPipelineState(mPsos["Game2D"]->GetPSO());
 	mCmdList->SetGraphicsRootSignature(mRootSignatures["Game2D"].Get());
 
-	mCmdList->SetGraphicsRootConstantBufferView(0,Data2D.mUploadProj->GetGPUVirtualAddress());
+	mCmdList->SetGraphicsRootConstantBufferView(0,
+		mResourceManager.getResource(Data2D.projResource)->GetGPUVirtualAddress());
 
 	D3D12_VERTEX_BUFFER_VIEW vbv = {};
-	vbv.BufferLocation = Data2D.mUploadVertex->GetGPUVirtualAddress();
-	vbv.SizeInBytes = vSize * sizeof(Vertex2D);
+	vbv.BufferLocation = mResourceManager.getResource(Data2D.uploadVertex)->GetGPUVirtualAddress();
+	vbv.SizeInBytes = vSize;
 	vbv.StrideInBytes = sizeof(Vertex2D);
 
 	mCmdList->IASetVertexBuffers(0 , 1 , &vbv);
@@ -570,62 +530,81 @@ void D3DRenderModule::draw2D() {
 }
 
 void D3DRenderModule::bindScene(Scene * scene) {
-	
+	Data3D.currScene = scene;
 }
 
 void D3DRenderModule::releaseScene(Scene& scene) {
-	
+	for (auto& item : scene.meshs) {
+		mResourceManager.releaseResource(item.second.gpuDataToken.index);
+		mResourceManager.releaseResource(item.second.gpuDataToken.vertex);
+	}
+
+	for (auto& item : scene.images) {
+		mResourceManager.releaseResource(item.second.gpuDataToken);
+	}
+
+	for (auto& item : scene.buffers) {
+		mResourceManager.releaseResource(item.second.gpuDataToken);
+	}
 }
 
+//currently we don't consider custom material
 void D3DRenderModule::drawSingleMesh(Mesh& mesh,SceneMaterial* mat) {
-
+	initializeSingleMeshData();
+	SingleMesh.mesh = &mesh;
 }
 
 void D3DRenderModule::uploadScene(Scene& scene) {
+	for (auto& item : scene.meshs) {
+		//if the mesh data uses index buffer data and the index data have never been uploaded
+		if (item.second.gpuDataToken.index == UUID::invaild
+			&& item.second.useIndexList) {
+			item.second.gpuDataToken.index =
+				mResourceManager.uploadStatic(item.second.indexList,
+					CD3DX12_RESOURCE_DESC::Buffer(item.second.indexList.size), D3D12_RESOURCE_STATE_COMMON);
+		}
+		if (item.second.gpuDataToken.vertex == UUID::invaild) {
+			item.second.gpuDataToken.vertex =
+				mResourceManager.uploadStatic(item.second.vertexList,
+					CD3DX12_RESOURCE_DESC::Buffer(item.second.vertexList.size), D3D12_RESOURCE_STATE_COMMON);
+		}
+	}
+
+	for (auto& item : scene.images) {
+		if (item.second.gpuDataToken == UUID::invaild) {
+			item.second.gpuDataToken =
+				mResourceManager.uploadStatic(item.second.data,
+					CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R32G32B32A32_FLOAT,
+						item.second.width,item.second.height),
+					D3D12_RESOURCE_STATE_COMMON);
+		}
+	}
+
+	for (auto& item : scene.buffers) {
+		//constant buffers need to align to 256
+		if (item.second.gpuDataToken == UUID::invaild) {
+			item.second.gpuDataToken =
+				mResourceManager.uploadStatic(item.second.buffer,
+					CD3DX12_RESOURCE_DESC::Buffer(item.second.buffer.size),
+					D3D12_RESOURCE_STATE_COMMON,
+					true);
+		}
+	}
 
 }
 
 //initialize the default render pipeline
-bool D3DRenderModule::initializeDefault() {
+bool D3DRenderModule::initializeSingleMesh() {
 
 	//The shader have not been compiled.Find the source code and compile them 
 	Buffer shader;
 	ComPtr<ID3DBlob> VS, PS;
 
-	/*
-	if (!gFileLoader->FileReadAndClose("DefaultMat.hlsl", shader, READ_CHARACTERS)) {
-		Log("Unable to find file DefaultMat.hlsl");
+	VS = mShaderLoader.CompileFile("DefaultMat.hlsl", "VS", SHADER_TYPE::VS);
+	PS = mShaderLoader.CompileFile("DefaultMat.hlsl", "PS", SHADER_TYPE::PS);
+
+	if (VS == nullptr || PS == nullptr)
 		return false;
-	}
-
-	auto compile = [](Buffer& code, const char* entry,
-		const char* target, ID3DBlob** byteCode) -> bool {
-			ComPtr<ID3DBlob> errorCode;
-
-			UINT compileFlag = 0;
-#ifdef _DEBUG
-			compileFlag = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-#endif	
-
-			HRESULT hr = D3DCompile(code.data, code.size,
-				nullptr, nullptr,
-				D3D_COMPILE_STANDARD_FILE_INCLUDE,
-				entry, target, compileFlag, 0,
-				byteCode, &errorCode);
-
-			if (FAILED(hr)) {
-				Log("fail to compile entry %s target %s , reason : %s \n",
-					entry, target, errorCode->GetBufferPointer());
-				return false;
-			}
-
-			return true;
-	};
-
-
-	if (!compile(shader, "VS", "vs_5_0", &VS) || !compile(shader, "PS", "ps_5_0", &PS))
-		return false;
-	*/
 	
 	mShaderByteCodes["DefaultVS"] = VS;
 	mShaderByteCodes["DefaultPS"] = PS;
@@ -648,7 +627,7 @@ bool D3DRenderModule::initializeDefault() {
 
 	pso->LazyBlendDepthRasterizeDefault();
 	
-	//{"COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT,0,12,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0}
+
 	InputLayout layout = {
 		{"TEXCOORD",0,DXGI_FORMAT_R32G32_FLOAT,0,0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
 		{"TANGENT",0,DXGI_FORMAT_R32G32B32_FLOAT,0,8,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
@@ -678,4 +657,109 @@ bool D3DRenderModule::initializeDefault() {
 
 	
 	return true;
+}
+
+void D3DRenderModule::updateSingleMeshData() {
+
+	if (gInput.KeyHold(InputBuffer::W)) 
+		SingleMesh.dis = min(SingleMesh.dis + 0.05, 18.);
+	else if (gInput.KeyHold(InputBuffer::S))
+		SingleMesh.dis = max(SingleMesh.dis - 0.05,2.5);
+	if (gInput.KeyHold(InputBuffer::A))
+		SingleMesh.lightu += 0.005 * PI;
+	else if (gInput.KeyHold(InputBuffer::D))
+		SingleMesh.lightu -= 0.005 * PI;
+
+	SingleMesh.lightData.Light[0].lightDirection =
+		Vector3(sin(SingleMesh.lightu), 0., cos(SingleMesh.lightu));
+
+	Mat4x4 rotate = MatrixRotateY( PI * 0.1 * gTimer.TotalTime());//(reinterpret_cast<float*>(&mat));
+
+	Mat4x4 world = MatrixPosition(Vector3(0, 0, SingleMesh.dis));
+	world = mul(world, rotate);
+	SingleMesh.objectData.world = world.T();
+	SingleMesh.objectData.transInvWorld = world.R();
+	mResourceManager.write(SingleMesh.gpuTransform, &SingleMesh.objectData,
+		sizeof(ObjectPass));
+	mResourceManager.write(SingleMesh.gpuLightData,&SingleMesh.lightData,sizeof(SingleMesh.lightData));
+}
+
+void D3DRenderModule::drawSingleMesh() {
+	if (!SingleMesh.mesh) return;
+	ID3D12Resource* vertData = mResourceManager.getResource(SingleMesh.mesh->gpuDataToken.vertex);
+	//printf("%s \n",to_string(*SingleMesh.mesh).c_str());
+
+	if (!vertData) {
+		Log("d3d 12 draw single mesh : can't fetch vertex data for some reason\n");
+		return;
+	}
+	D3D12_VERTEX_BUFFER_VIEW vbv;
+	vbv.BufferLocation = vertData->GetGPUVirtualAddress();
+	vbv.SizeInBytes = SingleMesh.mesh->vertexList.size;
+	vbv.StrideInBytes = Mesh::vertexSize;
+
+	mCmdList->SetPipelineState(mPsos["Default"]->GetPSO());
+	
+	mCmdList->SetGraphicsRootSignature(mRootSignatures["Default"].Get());
+
+	mCmdList->SetGraphicsRootConstantBufferView(0,
+		mResourceManager.getResource(SingleMesh.gpuTransform)->GetGPUVirtualAddress());
+	mCmdList->SetGraphicsRootConstantBufferView(1,
+		mResourceManager.getResource(SingleMesh.gpuCameraData)->GetGPUVirtualAddress());
+	mCmdList->SetGraphicsRootConstantBufferView(2,
+		mResourceManager.getResource(SingleMesh.gpuLightData)->GetGPUVirtualAddress());
+
+	mCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	mCmdList->IASetVertexBuffers(0, 1, &vbv);
+
+	if (SingleMesh.mesh->useIndexList) {
+		ID3D12Resource* indexData = mResourceManager.getResource(SingleMesh.mesh->gpuDataToken.index);
+
+		D3D12_INDEX_BUFFER_VIEW ibv;
+		ibv.BufferLocation = indexData->GetGPUVirtualAddress();
+		ibv.Format = SingleMesh.mesh->indexType == Mesh::I16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
+		ibv.SizeInBytes = SingleMesh.mesh->indexSize;
+
+		mCmdList->IASetIndexBuffer(&ibv);
+		mCmdList->DrawIndexedInstanced(SingleMesh.mesh->indexNum,
+			1, 0, 0, 0);
+	}
+	else
+		mCmdList->DrawInstanced(SingleMesh.mesh->vertexNum, 1, 0, 0);
+
+}
+
+void D3DRenderModule::initializeSingleMeshData() {
+
+	SingleMesh.dis = 9.;
+	Mat4x4 world = MatrixPosition(Vector3(0,0,SingleMesh.dis));
+	world = mul(world,MatrixRotateY(PI));
+	SingleMesh.objectData.world = world.T();
+	SingleMesh.objectData.transInvWorld = world.R();
+	if (SingleMesh.gpuTransform == UUID::invaild) {
+		SingleMesh.gpuTransform =
+			mResourceManager.uploadDynamic(&SingleMesh.objectData,
+				sizeof(ObjectPass), CD3DX12_RESOURCE_DESC::Buffer(sizeof(ObjectPass)),true);
+	}
+
+	SingleMesh.lightu = 0;
+	SingleMesh.lightData.Light[0].lightDirection = 
+		Vector3(sin(SingleMesh.lightu),0.,cos(SingleMesh.lightu));
+	SingleMesh.lightData.Light[0].lightIntensity = Vector4(0.75,0.75,0.75,1);
+	SingleMesh.lightData.ambient = Vector3(0.25,0.25,0.25);
+	if (SingleMesh.gpuLightData == UUID::invaild) {
+		SingleMesh.gpuLightData =
+			mResourceManager.uploadDynamic(&SingleMesh.lightData,
+				sizeof(LightPass), CD3DX12_RESOURCE_DESC::Buffer(sizeof(LightPass)), true);
+	}
+
+	Mat4x4 proj = MatrixProjection((float)width / (float)height, PI / 4.);
+	SingleMesh.cameraData.projection = proj.T();
+	SingleMesh.cameraData.invProjection = proj.R().T();
+	if (SingleMesh.gpuCameraData == UUID::invaild) {
+		SingleMesh.gpuCameraData =
+			mResourceManager.uploadDynamic(&SingleMesh.cameraData,
+				sizeof(CameraPass), CD3DX12_RESOURCE_DESC::Buffer(sizeof(CameraPass)), true);
+	}
+
 }

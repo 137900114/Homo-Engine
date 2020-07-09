@@ -203,7 +203,6 @@ Game::Scene* Game::SceneLoader::ObjPraser(Game::Buffer& buf,const char* name) {
 			newVert[i].Position = Position[item.Vert[i].ip - 1];
 			newVert[i].TexCoord = Texcoord[item.Vert[i].it - 1];
 		}
-
 		*vertex = newVert[0];
 		vertex++;
 		*vertex = newVert[1];
@@ -217,8 +216,10 @@ Game::Scene* Game::SceneLoader::ObjPraser(Game::Buffer& buf,const char* name) {
 			vertex++;
 			*vertex = newVert[3];
 			vertex++;
+		
 		}
 	}
+	currentMesh->vertexNum = vertexNum;
 
 	return scene;
 }

@@ -28,7 +28,7 @@ namespace Game {
 
 	//The buffer need to upload to gpu has UUID.
 	struct SceneBuffer {
-		UUID   id;
+		UUID   gpuDataToken;
 		Buffer buffer;
 		bool   updated = false;
 	};

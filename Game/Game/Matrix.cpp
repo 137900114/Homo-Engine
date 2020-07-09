@@ -514,8 +514,8 @@ namespace Game {
 
 		float buffer[16] = {
 			1, 0, 0,0,
-			0, c,-s,0,
-			0, s, c,0,
+			0, c, s,0,
+			0,-s, c,0,
 			0, 0, 0,1
 		};
 
@@ -526,10 +526,10 @@ namespace Game {
 		float s = sin(angle), c = cos(angle);
 
 		float buffer[16] = {
-			c,0, s,0,
-			0,1, 0,0,
-		   -s,0, c,0,
-			0,0, 0,1
+			c,0, -s,0,
+			0,1,  0,0,
+		    s,0,  c,0,
+			0,0,  0,1
 		};
 
 		return Mat4x4(buffer);
@@ -539,8 +539,8 @@ namespace Game {
 		float s = sin(angle), c = cos(angle);
 
 		float buffer[16] = {
-			 c,-s,0,0,
-		     s, c,0,0,
+			 c, s,0,0,
+		    -s, c,0,0,
 			 0, 0,1,0,
 			 0, 0,0,1
 		};
@@ -565,11 +565,13 @@ namespace Game {
 		
 		float a = tan(verticalViewAngle / 2);
 
+		float nearCov = far / (far - near);
+
 		float buffer[16] = {
-			1 / (a * aspectRatio) , 0     , 0                   , 0 ,
-			0                     , 1 / a , 0                   , 0 ,
-			0                     ,     0 , 1 / (far - near)    , 1 ,
-			0                     ,     0 , near / (far - near) , 0
+			1 / (a * aspectRatio) , 0     , 0       , 0 ,
+			0                     , 1 / a , 0       , 0 ,
+			0                     ,     0 , nearCov , -nearCov * near ,
+			0                     ,     0 , 1       , 0
 		};
 
 		return Mat4x4(buffer);
