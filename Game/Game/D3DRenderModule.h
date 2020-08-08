@@ -12,6 +12,10 @@
 #include "d3dCommon.h"
 #include "ShaderLoader.h"
 #include "D3DResourceManager.h"
+#include "D3DDescriptorHandleAllocator.h"
+#include "D3DDrawContext.h"
+#include "D3DDataStructure.h"
+
 
 #pragma comment(lib,"d3d12.lib")
 #pragma comment(lib,"dxgi.lib")
@@ -32,6 +36,8 @@ namespace Game {
 		virtual void point2D(Vector2 pos,float size,Vector4 Color,float depth) override;
 		virtual void line2D(Vector2 start,Vector2 end,float width,Vector4 Color,float depth) override;
 		virtual void cricle2D(Vector2 pos, float radius, Vector4 Color, float depth, int powPoly) override;
+		virtual void polygon2D(const Vector2* verts,int vertNum,Vector4 Color,float depth) override;
+		virtual void image2D(Texture& image, Vector2 center, Vector2 size,float rotate, float depth) override;
 
 
 		virtual void set2DViewPort(Vector2 center,float height) override;
@@ -42,12 +48,14 @@ namespace Game {
 
 		virtual void drawSingleMesh(Mesh& mesh,SceneMaterial* mat) override;
 	private:
+		void create2DImageDrawCall();
 
 		bool createRenderTargetView();
 		void waitForFenceValue(uint64_t fence);
 
 		bool initialize2D();
 		bool initializeSingleMesh();
+		bool initialize2DImage();
 		void draw2D();
 
 		void drawSingleMesh();
@@ -101,34 +109,7 @@ namespace Game {
 		
 		ShaderLoader mShaderLoader;
 		D3DResourceManager mResourceManager;
-		
-		//The z value of the position specifies the order of the drawing
-		struct Vertex2D{
-			Vector3 Position;
-			Vector4 Color;
-		};
-
-		//the constant buffer will be aligned by 4 float data
-		struct LightPass {
-			struct {
-				Vector3 lightDirection;
-				float paddle;
-				Vector4 lightIntensity;
-			}Light [1];
-
-			Vector3 ambient;
-		};
-
-		struct CameraPass {
-			Mat4x4 projection;
-			Mat4x4 invProjection;
-			float timeLine;
-		};
-
-		struct ObjectPass {
-			Mat4x4 world;
-			Mat4x4 transInvWorld;
-		};
+		D3DDescriptorHandleAllocator mDescriptorAllocator;
 
 		struct {
 			Mat4x4 Proj;
@@ -137,7 +118,18 @@ namespace Game {
 			std::vector<Vertex2D> vertexList;
 			UUID uploadVertex;
 			size_t currVSize;
+
 		} Data2D;
+
+		
+
+		struct {
+			std::vector<ImageVertex2D> imageVertexList;
+			std::vector<D3D12_GPU_DESCRIPTOR_HANDLE>  images;
+
+			UUID imageUploadVertex;
+			size_t currImageVSize;
+		} Image2DBuffer;
 
 		struct {
 			Scene* currScene;
@@ -162,6 +154,9 @@ namespace Game {
 			CameraPass cameraData;
 			UUID gpuCameraData;
 		}SingleMesh;
+
+
+		std::vector<D3DDrawContext*> drawCommandList;
 
 	};
 }

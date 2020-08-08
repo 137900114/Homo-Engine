@@ -19,3 +19,20 @@ void getExtensionName(const char* filename, std::string& file_extension, std::st
 	file_extension = _filename.substr(ext_pos + 1, _filename.size() - ext_pos - 1),
 		file_name = _filename.substr(0,ext_pos);
 }
+
+void printBuffer(const void* data,size_t size) {
+	const uint8_t* _data = reinterpret_cast<const uint8_t*>(data);
+
+	for (int i = 0; i != 16; i++) {
+		printf("%4x",i);
+	}
+
+	int j = 0;
+	for (int i = 0; i != size;i++) {
+		if (j % 16 == 0) {
+			printf("\n");
+		}
+		printf("%4X",*(_data + i));
+		j++;
+	}
+}

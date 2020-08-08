@@ -353,14 +353,28 @@ _PackedMat4x4 _MulMat4x4(_PackedMat4x4& lhs, _PackedMat4x4& rhs) {
 }
 
 __m128 _Multi4x4(_PackedMat4x4& mat,__m128 vec) {
-	__m128 v0 = _mm_mul_ps(mat.m[0],vec);
-	__m128 v1 = _mm_mul_ps(mat.m[1],vec);
-	__m128 v2 = _mm_mul_ps(mat.m[2],vec);
-	__m128 v3 = _mm_mul_ps(mat.m[3],vec);
+	__m128 temp0, temp1;
 
-	v0 = _mm_add_ps(v0,v1);
-	v0 = _mm_add_ps(v0,v2);
-	return _mm_add_ps(v0,v3);
+#define SUM_VEC(v)\
+	temp0 = _mm_shuffle_ps(v,v,_MM_SHUFFLE(1,0,1,0));\
+	temp1 = _mm_shuffle_ps(v,v,_MM_SHUFFLE(3,2,3,2));\
+	temp0 = _mm_add_ps(temp0,temp1);\
+	v = _mm_add_ps(_mm_shuffle_ps(temp0,temp0,_MM_SHUFFLE(0,0,0,0)),_mm_shuffle_ps(temp0,temp0,_MM_SHUFFLE(1,1,1,1)));
+	__m128 v0 = _mm_mul_ps(mat.m[0],vec);
+	SUM_VEC(v0);
+	__m128 v1 = _mm_mul_ps(mat.m[1],vec);
+	SUM_VEC(v1);
+	__m128 v2 = _mm_mul_ps(mat.m[2],vec);
+	SUM_VEC(v2);
+	__m128 v3 = _mm_mul_ps(mat.m[3],vec);
+	SUM_VEC(v3);
+
+	v0 = _mm_shuffle_ps(v0, v1, _MM_SHUFFLE(0, 0, 0, 0));
+	v0 = _mm_shuffle_ps(v0, v0, _MM_SHUFFLE(2, 0, 2, 0));
+	v2 = _mm_shuffle_ps(v2, v3, _MM_SHUFFLE(0, 0, 0, 0));
+	v2 = _mm_shuffle_ps(v2, v2, _MM_SHUFFLE(2, 0, 2, 0));
+
+	return _mm_shuffle_ps(v0, v2, _MM_SHUFFLE(3, 2, 1, 0));
 }
 
 namespace Game {
@@ -441,8 +455,8 @@ namespace Game {
 
 	Vector2 mul(const Mat2x2& mat, Vector2 vec) {
 		return Vector2(
-			vec[0] * (mat.a[0][0] + mat.a[0][1]),
-			vec[1] * (mat.a[1][0] + mat.a[1][1])
+			vec[0] * mat.a[0][0] + mat.a[0][1] * vec[1],
+			vec[0] * mat.a[1][0] + mat.a[1][1] * vec[1]
 		);
 	}
 

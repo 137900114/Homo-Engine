@@ -25,8 +25,6 @@ namespace Game {
 void* MemPagePool::allocate_page() {
 
 	if (curr_page == nullptr || curr_offset + Game::PageAllocator::page_size >= pool_size) {
-		static int counter = 0;
-		printf("%d ", counter++);
 		void* new_pool = malloc(pool_size);
 		curr_page = reinterpret_cast<uint8_t*>(new_pool);
 		curr_offset = 0;

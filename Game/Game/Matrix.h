@@ -39,7 +39,7 @@ namespace Game {
 		
 			a[0][0] = a00, a[0][1] = a01, a[0][2] = a02,
 			a[1][0] = a10, a[1][1] = a11, a[1][2] = a12,
-			a[2][0] = a10, a[2][1] = a21, a[2][2] = a22;
+			a[2][0] = a20, a[2][1] = a21, a[2][2] = a22;
 		}
 		//Inverse and determinate cost a lot,using these two
 		//operation too ofthen is not recomended

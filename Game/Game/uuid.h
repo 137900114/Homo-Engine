@@ -25,19 +25,19 @@ namespace Game {
     private:
         char value[32];
     public:
-        UUID() { memcpy(value, invaild.value, sizeof(value)); }
+        UUID() { memcpy(value, invalid.value, sizeof(value)); }
 
         UUID(const char* buf);
         UUID(const UUID& uuid) { memcpy(value, uuid.value, sizeof(value)); }
 
         UUID(UUID&& uuid) noexcept {
             memcpy(value,uuid.value,sizeof(value));
-            uuid = invaild;
+            uuid = invalid;
         }
 
         const UUID& operator=(UUID&& uuid) noexcept {
             memcpy(value,uuid.value,sizeof(uuid.value));
-            uuid = invaild;
+            uuid = invalid;
             return *this;
         }
         
@@ -60,7 +60,10 @@ namespace Game {
 
         static UUID generate() {
             static bool inited = false;
-            if (!inited) uuid_init();
+            if (!inited) {
+                uuid_init();
+                inited = true;
+            }
 
             char buffer[37];
             uuid_generate(buffer);
@@ -70,6 +73,6 @@ namespace Game {
 
         std::string to_string();
 
-        static UUID invaild;
+        static UUID invalid;
     };
 }

@@ -63,7 +63,7 @@ int uuid_init(void) {
     return UUID_ESUCCESS;
 }
 
-Game::UUID Game::UUID::invaild("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx");
+Game::UUID Game::UUID::invalid("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx");
 
 void uuid_generate(char* dst) {
     static const char* temp = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx";

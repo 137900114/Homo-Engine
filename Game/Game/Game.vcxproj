@@ -21,13 +21,18 @@
   <ItemGroup>
     <ClInclude Include="BaseApplication.h" />
     <ClInclude Include="Buffer.h" />
+    <ClInclude Include="Color.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="Config.h" />
     <ClInclude Include="d3d12x.h" />
     <ClInclude Include="d3dCommon.h" />
+    <ClInclude Include="D3DDataStructure.h" />
+    <ClInclude Include="D3DDescriptorHandleAllocator.h" />
+    <ClInclude Include="D3DDrawContext.h" />
     <ClInclude Include="D3DRenderModule.h" />
     <ClInclude Include="D3DResourceManager.h" />
     <ClInclude Include="FileLoader.h" />
+    <ClInclude Include="GeometryGenerator.h" />
     <ClInclude Include="GraphicModule.h" />
     <ClInclude Include="IApplication.h" />
     <ClInclude Include="Image.h" />
@@ -50,10 +55,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseApplication.cpp" />
+    <ClCompile Include="Color.cpp" />
     <ClCompile Include="Common.cpp" />
+    <ClCompile Include="D3DDescriptorHandleAllocator.cpp" />
+    <ClCompile Include="D3DDrawContext.cpp" />
     <ClCompile Include="D3DResourceManager.cpp" />
     <ClCompile Include="D3DRenderModule.cpp" />
     <ClCompile Include="FileLoader.cpp" />
+    <ClCompile Include="GeometryGenerator.cpp" />
     <ClCompile Include="Image.cpp" />
     <ClCompile Include="InputBuffer.cpp" />
     <ClCompile Include="main.cpp" />

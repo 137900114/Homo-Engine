@@ -221,6 +221,11 @@ bool D3DRenderModule::initialize() {
 
 	waitEvent = CreateEventEx(nullptr, L"", NULL, EVENT_ALL_ACCESS);
 
+	if (!this->mDescriptorAllocator.initiailize(mDevice.Get())) {
+		Log("d3d12 error : fail to initialize descriptor handle allocator");
+		return false;
+	}
+
 	if (!initialize2D()) {
 		Log("d3d12 error : fail to initialize 2D render module\n");
 		return false;
@@ -229,6 +234,11 @@ bool D3DRenderModule::initialize() {
 	
 	if (!initializeSingleMesh()) {
 		Log("d3d12 error : fail to initialize 3D default render module\n");
+		return false;
+	}
+
+	if (!initialize2DImage()) {
+		Log("d3d12 error : fail to initialize 2D image render module\n");
 		return false;
 	}
 	
@@ -246,9 +256,12 @@ bool D3DRenderModule::initialize() {
 	sissorRect.left = 0;
 	sissorRect.right = width;
 
-	SingleMesh.gpuLightData = UUID::invaild;
-	SingleMesh.gpuCameraData = UUID::invaild;
-	SingleMesh.gpuTransform = UUID::invaild;
+	SingleMesh.gpuLightData = UUID::invalid;
+	SingleMesh.gpuCameraData = UUID::invalid;
+	SingleMesh.gpuTransform = UUID::invalid;
+
+	Image2DBuffer.currImageVSize = 0;
+	Image2DBuffer.imageUploadVertex = UUID::invalid;
 
 	return true;
 }
@@ -272,6 +285,8 @@ void D3DRenderModule::tick() {
 
 	mResourceManager.tick(mCmdList.Get());
 
+	create2DImageDrawCall();
+
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
 	rtvHandle.Offset(mCurrentFrameIndex,rtvDescriptorIncreament);
 
@@ -288,6 +303,12 @@ void D3DRenderModule::tick() {
 	draw2D();
 	//draw single pass object
 	drawSingleMesh();
+
+	for (auto& cmd : drawCommandList) {
+		cmd->BindOnCommandList(mCmdList.Get());
+		gMemory->Delete(cmd);
+	}
+	drawCommandList.clear();
 
 	mCmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
 		mBackBuffers[mCurrentFrameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -381,6 +402,17 @@ void D3DRenderModule::line2D(Vector2 start,Vector2 end,float width, Vector4 Colo
 	PUSH_BACK_VERTEX_(p1);
 	PUSH_BACK_VERTEX_(p2);
 	PUSH_BACK_VERTEX_(p3);
+}
+
+void D3DRenderModule::polygon2D(const Vector2* verts,int vertNum,Vector4 color,float depth) {
+	//nothing to draw if the polygon only have less than 3 edges
+	if (vertNum < 3) return;
+	
+	for (int i = 1; i != vertNum - 1; i++) {
+		Data2D.vertexList.push_back({ Vector3(verts[0].x,verts[0].y,depth),color });
+		Data2D.vertexList.push_back({ Vector3(verts[i].x,verts[i].y,depth),color });
+		Data2D.vertexList.push_back({ Vector3(verts[i + 1].x,verts[i + 1].y,depth),color });
+	}
 }
 
 void D3DRenderModule::cricle2D(Vector2 pos, float radius, Vector4 Color, float depth, int powPoly) {
@@ -520,7 +552,7 @@ void D3DRenderModule::draw2D() {
 	mCmdList->IASetVertexBuffers(0 , 1 , &vbv);
 	mCmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	mCmdList->DrawInstanced(vSize, 1, 0, 0);
+	mCmdList->DrawInstanced(Data2D.vertexList.size(), 1, 0, 0);
 
 	
 
@@ -557,35 +589,29 @@ void D3DRenderModule::drawSingleMesh(Mesh& mesh,SceneMaterial* mat) {
 void D3DRenderModule::uploadScene(Scene& scene) {
 	for (auto& item : scene.meshs) {
 		//if the mesh data uses index buffer data and the index data have never been uploaded
-		if (item.second.gpuDataToken.index == UUID::invaild
+		if (item.second.gpuDataToken.index == UUID::invalid
 			&& item.second.useIndexList) {
 			item.second.gpuDataToken.index =
-				mResourceManager.uploadStatic(item.second.indexList,
-					CD3DX12_RESOURCE_DESC::Buffer(item.second.indexList.size), D3D12_RESOURCE_STATE_COMMON);
+				mResourceManager.uploadStaticBuffer(item.second.indexList, D3D12_RESOURCE_STATE_COMMON);
 		}
-		if (item.second.gpuDataToken.vertex == UUID::invaild) {
+		if (item.second.gpuDataToken.vertex == UUID::invalid) {
 			item.second.gpuDataToken.vertex =
-				mResourceManager.uploadStatic(item.second.vertexList,
-					CD3DX12_RESOURCE_DESC::Buffer(item.second.vertexList.size), D3D12_RESOURCE_STATE_COMMON);
+				mResourceManager.uploadStaticBuffer(item.second.vertexList, D3D12_RESOURCE_STATE_COMMON);
 		}
 	}
 
 	for (auto& item : scene.images) {
-		if (item.second.gpuDataToken == UUID::invaild) {
+		if (item.second.gpuDataToken == UUID::invalid) {
 			item.second.gpuDataToken =
-				mResourceManager.uploadStatic(item.second.data,
-					CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_R32G32B32A32_FLOAT,
-						item.second.width,item.second.height),
-					D3D12_RESOURCE_STATE_COMMON);
+				mResourceManager.uploadTexture(item.second, D3D12_RESOURCE_STATE_COMMON);
 		}
 	}
 
 	for (auto& item : scene.buffers) {
 		//constant buffers need to align to 256
-		if (item.second.gpuDataToken == UUID::invaild) {
+		if (item.second.gpuDataToken == UUID::invalid) {
 			item.second.gpuDataToken =
-				mResourceManager.uploadStatic(item.second.buffer,
-					CD3DX12_RESOURCE_DESC::Buffer(item.second.buffer.size),
+				mResourceManager.uploadStaticBuffer(item.second.buffer,
 					D3D12_RESOURCE_STATE_COMMON,
 					true);
 		}
@@ -686,6 +712,19 @@ void D3DRenderModule::updateSingleMeshData() {
 
 void D3DRenderModule::drawSingleMesh() {
 	if (!SingleMesh.mesh) return;
+	//if the single mesh haven't upload mesh data to the resource manager
+	//try to upload the data
+	if (SingleMesh.mesh->gpuDataToken.vertex == UUID::invalid) {
+		SingleMesh.mesh->gpuDataToken.vertex = mResourceManager.uploadStaticBuffer(
+			SingleMesh.mesh->vertexList, D3D12_RESOURCE_STATE_COMMON);
+		if (SingleMesh.mesh->gpuDataToken.index == UUID::invalid &&
+				SingleMesh.mesh->useIndexList) {
+			SingleMesh.mesh->gpuDataToken.index = mResourceManager.uploadStaticBuffer(
+				SingleMesh.mesh->indexList,D3D12_RESOURCE_STATE_COMMON);
+		}
+		return;
+	}
+	
 	ID3D12Resource* vertData = mResourceManager.getResource(SingleMesh.mesh->gpuDataToken.vertex);
 	//printf("%s \n",to_string(*SingleMesh.mesh).c_str());
 
@@ -718,7 +757,7 @@ void D3DRenderModule::drawSingleMesh() {
 		D3D12_INDEX_BUFFER_VIEW ibv;
 		ibv.BufferLocation = indexData->GetGPUVirtualAddress();
 		ibv.Format = SingleMesh.mesh->indexType == Mesh::I16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
-		ibv.SizeInBytes = SingleMesh.mesh->indexSize;
+		ibv.SizeInBytes = SingleMesh.mesh->indexList.size;
 
 		mCmdList->IASetIndexBuffer(&ibv);
 		mCmdList->DrawIndexedInstanced(SingleMesh.mesh->indexNum,
@@ -736,7 +775,7 @@ void D3DRenderModule::initializeSingleMeshData() {
 	world = mul(world,MatrixRotateY(PI));
 	SingleMesh.objectData.world = world.T();
 	SingleMesh.objectData.transInvWorld = world.R();
-	if (SingleMesh.gpuTransform == UUID::invaild) {
+	if (SingleMesh.gpuTransform == UUID::invalid) {
 		SingleMesh.gpuTransform =
 			mResourceManager.uploadDynamic(&SingleMesh.objectData,
 				sizeof(ObjectPass), CD3DX12_RESOURCE_DESC::Buffer(sizeof(ObjectPass)),true);
@@ -747,7 +786,7 @@ void D3DRenderModule::initializeSingleMeshData() {
 		Vector3(sin(SingleMesh.lightu),0.,cos(SingleMesh.lightu));
 	SingleMesh.lightData.Light[0].lightIntensity = Vector4(0.75,0.75,0.75,1);
 	SingleMesh.lightData.ambient = Vector3(0.25,0.25,0.25);
-	if (SingleMesh.gpuLightData == UUID::invaild) {
+	if (SingleMesh.gpuLightData == UUID::invalid) {
 		SingleMesh.gpuLightData =
 			mResourceManager.uploadDynamic(&SingleMesh.lightData,
 				sizeof(LightPass), CD3DX12_RESOURCE_DESC::Buffer(sizeof(LightPass)), true);
@@ -756,10 +795,199 @@ void D3DRenderModule::initializeSingleMeshData() {
 	Mat4x4 proj = MatrixProjection((float)width / (float)height, PI / 4.);
 	SingleMesh.cameraData.projection = proj.T();
 	SingleMesh.cameraData.invProjection = proj.R().T();
-	if (SingleMesh.gpuCameraData == UUID::invaild) {
+	if (SingleMesh.gpuCameraData == UUID::invalid) {
 		SingleMesh.gpuCameraData =
 			mResourceManager.uploadDynamic(&SingleMesh.cameraData,
 				sizeof(CameraPass), CD3DX12_RESOURCE_DESC::Buffer(sizeof(CameraPass)), true);
 	}
 
+}
+
+void D3DRenderModule::image2D(Texture& image,Vector2 center,Vector2 size,float rotate,float depth) {
+	if (image.type != TEXTURE_TYPE::TEXTURE2D) {
+		Log("d3d12::image2D error : image2D only accept and draw texture whose type is TEXTURE2D\n");
+		return;
+	}
+
+	if (image.gpuDataToken == UUID::invalid) {
+		image.gpuDataToken = mResourceManager.uploadTexture(image,
+			D3D12_RESOURCE_STATE_COMMON);
+		if (image.gpuDataToken == UUID::invalid) {
+			Log("d3d12::image2D fail to upload image data");	
+		}
+		return;
+	}
+
+ 	D3DDescriptorHandle srvHandle = mDescriptorAllocator.getDescriptorHandle(image.gpuDataToken,
+										D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+	if (srvHandle == D3DDescriptorHandle::invalid) {
+		ID3D12Resource* texture = mResourceManager.getResource(image.gpuDataToken);
+		if (texture == nullptr) {
+			//Log("d3d12 : unexpected error occurs during upload 2d image,can't find handle %s 's corresponding resource\n",
+			//	image.gpuDataToken.to_string().c_str());
+			return;
+		}
+		srvHandle = mDescriptorAllocator.AllocateNewHandle(image.gpuDataToken,
+			D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+
+		if (srvHandle == D3DDescriptorHandle::invalid) {
+			Log("d3d12 : unexpected error occurs during upload 2d image,can't allocate new descriptor handle for new resource\n");
+			return;
+		}
+		
+
+		D3D12_RESOURCE_DESC rDesc = texture->GetDesc();
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.Format = rDesc.Format;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		
+		srvDesc.Texture2D.MipLevels = rDesc.MipLevels;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+		srvDesc.Texture2D.ResourceMinLODClamp = 0.f;
+
+		mDevice->CreateShaderResourceView(texture,&srvDesc,srvHandle.cpuHandle);
+	}
+
+	Image2DBuffer.images.push_back(srvHandle.gpuHandle);
+
+	float c = cos(rotate), s = sin(rotate);
+	Mat2x2 Rotate(c, s, -s, c);
+
+	Vector2 lt = mul(Rotate, Vector2(-size.x, size.y)),
+		rt = mul(Rotate, size);
+
+	//    ------ need to be fixed ---- //
+	ImageVertex2D v[4];
+	Vector2 Pos = center + lt / 2.;
+	v[0].Position = Vector3(Pos.x, Pos.y, depth);
+	v[0].Texcoord = Vector2(0., 1.);
+	Pos = center + rt / 2.;
+	v[1].Position = Vector3(Pos.x, Pos.y, depth);
+	v[1].Texcoord = Vector2(1., 1.);
+	Pos = center - lt / 2.;
+	v[2].Position = Vector3(Pos.x, Pos.y, depth);
+	v[2].Texcoord = Vector2(1., 0.);
+	Pos = center - rt / 2.;
+	v[3].Position = Vector3(Pos.x, Pos.y, depth);
+	v[3].Texcoord = Vector2(0., 0.);
+
+	Image2DBuffer.imageVertexList.push_back(v[0]);
+	Image2DBuffer.imageVertexList.push_back(v[1]);
+	Image2DBuffer.imageVertexList.push_back(v[2]);
+	Image2DBuffer.imageVertexList.push_back(v[0]);
+	Image2DBuffer.imageVertexList.push_back(v[2]);
+	Image2DBuffer.imageVertexList.push_back(v[3]);
+}
+
+bool D3DRenderModule::initialize2DImage() {
+	ComPtr<ID3DBlob> VS, PS;
+	RootSignature rootSig(2,1);
+
+	//to upload the texture we need to initialize the root signature as a SRV descriptor table
+	//here is the microsoft d3d document says
+	//The inlined root descriptors should contain descriptors that are accessed most often, 
+	//though is limited to CBVs, and raw or structured UAV or SRV buffers. A more complex type, 
+	//such as a 2D texture SRV, cannot be used as a root descriptor. 
+	rootSig[0].initAsDescriptorTable(0,0,1,D3D12_DESCRIPTOR_RANGE_TYPE_SRV);
+	rootSig.InitializeSampler(0, CD3DX12_STATIC_SAMPLER_DESC(0));
+	rootSig[1].initAsConstantBuffer(0, 0);
+
+	if (!rootSig.EndEditingAndCreate(mDevice.Get())) {
+		Log("d3d12 : fail to create 2d image pipeline");
+		return false;
+	}
+
+	mRootSignatures["Image2D"] = rootSig.GetRootSignature();
+
+	VS = mShaderLoader.CompileFile("Image2D.hlsl", "VS", SHADER_TYPE::VS);
+	PS = mShaderLoader.CompileFile("Image2D.hlsl", "PS", SHADER_TYPE::PS);
+
+	if (VS == nullptr || PS == nullptr) {
+		return false;
+	}
+
+	InputLayout input = {
+		{"POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
+		{"TEXCOORD",0,DXGI_FORMAT_R32G32_FLOAT,0,12,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0}
+	};
+
+	mShaderByteCodes["Image2DVS"] = VS;
+	mShaderByteCodes["Image2DPS"] = PS;
+
+	mPsos["Image2D"] = std::make_unique<GraphicPSO>();
+	GraphicPSO* pso = mPsos["Image2D"].get();
+
+	pso->LazyBlendDepthRasterizeDefault();
+	pso->SetDepthStencilViewFomat(mDepthBufferFormat);
+	pso->SetFlag(D3D12_PIPELINE_STATE_FLAG_NONE);
+
+	pso->SetInputElementDesc(input);
+	pso->SetNodeMask(0);
+
+	pso->SetVertexShader(VS->GetBufferPointer(),VS->GetBufferSize());
+	pso->SetPixelShader(PS->GetBufferPointer(),PS->GetBufferSize());
+
+	pso->SetPrimitiveTopologyType(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE);
+	pso->SetRootSignature(&rootSig);
+
+	pso->SetRenderTargetFormat(mBackBufferFormat);
+	pso->SetSampleDesc(1, 0);
+	pso->SetSampleMask(UINT_MAX);
+
+	if (!pso->Create(mDevice.Get())) {
+		Log("d3d12 : fail to create pipeline state object for image 2d pipeline\n");
+		return false;
+	}
+
+	return true;
+}
+
+void D3DRenderModule::create2DImageDrawCall() {
+	if (Image2DBuffer.imageVertexList.empty()) {
+		return;
+	}
+
+	ID3D12Resource* ProjResource = mResourceManager.getResource(Data2D.projResource);
+	if (ProjResource == nullptr) {
+		Log("error : fail to get projection matrix resource ,fail to make draw call\n");
+		return;
+	}
+	//if the resource is out of bounary.Release the release the vertex buffer and create a 
+	//vertex buffer twice as big as the space required
+	size_t requiredVertBufferSize = Image2DBuffer.imageVertexList.size() * sizeof(ImageVertex2D);
+	if (requiredVertBufferSize >= Image2DBuffer.currImageVSize) {
+		mResourceManager.releaseResource(Image2DBuffer.imageUploadVertex);
+
+		Image2DBuffer.imageUploadVertex = mResourceManager.uploadDynamic(Image2DBuffer.imageVertexList.data(),
+			requiredVertBufferSize, CD3DX12_RESOURCE_DESC::Buffer(requiredVertBufferSize * 2));
+	}
+	else {
+		mResourceManager.write(Image2DBuffer.imageUploadVertex,
+			Image2DBuffer.imageVertexList.data(), requiredVertBufferSize);
+	}
+
+	ID3D12Resource* mVertResource = mResourceManager.getResource(Image2DBuffer.imageUploadVertex);
+
+	for (int i = 0; i != Image2DBuffer.images.size(); i++) {
+		D3D12_VERTEX_BUFFER_VIEW vbv;
+		vbv.BufferLocation = mVertResource->GetGPUVirtualAddress() + sizeof(ImageVertex2D) * i * 6;
+		vbv.SizeInBytes = sizeof(ImageVertex2D) * 6;
+		vbv.StrideInBytes = sizeof(ImageVertex2D);
+
+		D3DDrawContext* draw = gMemory->New<D3DDrawContext>(mPsos["Image2D"]->GetPSO(), mRootSignatures["Image2D"].Get(),
+			mDescriptorAllocator.getDescriptorHeap(),2, vbv, 6);
+		
+		draw->SetShaderParameter(1, ShaderParameter(ProjResource->GetGPUVirtualAddress(),
+			D3D12_ROOT_PARAMETER_TYPE_CBV, 1));
+		draw->SetShaderParameter(0, ShaderParameter(Image2DBuffer.images[i],
+			D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE, 0));
+
+		drawCommandList.push_back(draw);
+	}
+
+	Image2DBuffer.images.clear();
+	Image2DBuffer.imageVertexList.clear();
 }

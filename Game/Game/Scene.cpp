@@ -36,7 +36,7 @@ Game::Scene::~Scene() {
 	}
 }
 
-Game::Scene* Game::SceneLoader::loadScene(const char* filename) {
+Game::Scene* Game::SceneLoader::loadScene(const char* filename,bool useIndex) {
 
 	Buffer filedata;
 	Scene* _newScene;
@@ -55,7 +55,7 @@ Game::Scene* Game::SceneLoader::loadScene(const char* filename) {
 			Log("SceneLoader : fail to open file %s\n",filename);
 			return nullptr;
 		}
-		_newScene = ObjPraser(filedata,file_name.c_str());
+		_newScene = ObjPraser(filedata,file_name.c_str(),useIndex);
 	}
 	else {
 		return nullptr;
@@ -97,7 +97,7 @@ void Game::SceneLoader::destroyScene(const char* scene_name) {
 
 
 //currently we only read some mesh into the scene
-Game::Scene* Game::SceneLoader::ObjPraser(Game::Buffer& buf,const char* name) {
+Game::Scene* Game::SceneLoader::ObjPraser(Game::Buffer& buf,const char* name,bool useIndex) {
 	std::string data = reinterpret_cast<char*>(buf.data);
 
 	std::istringstream strstr(data);
@@ -149,7 +149,7 @@ Game::Scene* Game::SceneLoader::ObjPraser(Game::Buffer& buf,const char* name) {
 		}
 		else if (strLis[0].compare("v") == 0) {
 			if (strLis.size() < 4) {
-				Log("fileloader : invaild data in file %s : the vertex position data must have at least 3 dimension at line %d\n",
+				Log("fileloader : invalid data in file %s : the vertex position data must have at least 3 dimension at line %d\n",
 					name,line_counter);
 				Position.push_back(Vector3());
 				continue;
@@ -158,7 +158,7 @@ Game::Scene* Game::SceneLoader::ObjPraser(Game::Buffer& buf,const char* name) {
 		}
 		else if (strLis[0].compare("vn") == 0) {
 			if (strLis.size() < 4) {
-				Log("fileloader : invaild data in file %s: the normal data must have at least 3 dimension at line %d\n",
+				Log("fileloader : invalid data in file %s: the normal data must have at least 3 dimension at line %d\n",
 					name,line_counter);
 				Normal.push_back(Vector3());
 				continue;
@@ -168,7 +168,7 @@ Game::Scene* Game::SceneLoader::ObjPraser(Game::Buffer& buf,const char* name) {
 		}
 		else if (strLis[0].compare("vt") == 0) {
 			if (strLis.size() < 3) {
-				Log("fileloader : invaild object file %s:invaild texture coordinate data at least 2 dimension at line %d\n",
+				Log("fileloader : invalid object file %s:invalid texture coordinate data at least 2 dimension at line %d\n",
 					name,line_counter);
 				Texcoord.push_back(Vector2());
 				continue;
@@ -191,35 +191,91 @@ Game::Scene* Game::SceneLoader::ObjPraser(Game::Buffer& buf,const char* name) {
 		}
 	}
 
-	currentMesh->indexNum = 0;
-	currentMesh->useIndexList = false;
+	if (currentMesh == nullptr) return nullptr;
 
-	currentMesh->vertexList.resize(vertexNum * Mesh::vertexSize);
-	Mesh::Vertex* vertex = reinterpret_cast<Mesh::Vertex*>(currentMesh->vertexList.data);
-	for (auto& item : face) {
-		Mesh::Vertex newVert[4];
-		for (int i = 0; i != item.vertNum; i++) {
-			newVert[i].Normal = Normal[item.Vert[i].in - 1];
-			newVert[i].Position = Position[item.Vert[i].ip - 1];
-			newVert[i].TexCoord = Texcoord[item.Vert[i].it - 1];
+	if (useIndex) {
+		//Create the vertex buffer and set initial value to 0
+		currentMesh->vertexList.resize(Mesh::vertexSize * Position.size());
+		Mesh::Vertex* vert = reinterpret_cast<Mesh::Vertex*>(currentMesh->vertexList.data);
+		currentMesh->vertexNum = Position.size();
+		memset(vert,0,currentMesh->vertexList.size);
+
+		currentMesh->indexType = vertexNum < (2 << 16) ? Mesh::I16 : Mesh::I32;
+		currentMesh->indexNum = vertexNum;
+		currentMesh->useIndexList = true;
+		currentMesh->indexList.resize(currentMesh->indexSize * vertexNum);
+
+		//sum up the times the indeices appear , and do average for normals
+		std::vector<uint32_t> indexCount(vertexNum,0);
+
+#define CalcuVertexAndIterateIndex(type)	type* currI = reinterpret_cast<type*>(currentMesh->indexList.data);\
+									for (auto& item : face) {\
+										for (int i = 0; i != item.vertNum; i++) {\
+											Mesh::Vertex* currVert = vert + (item.Vert[i].ip - 1);\
+											\
+											currVert->Position = Position[item.Vert[i].ip - 1];\
+											currVert->Normal = currVert->Normal + Normal[item.Vert[i].in - 1];\
+											currVert->TexCoord = Texcoord[item.Vert[i].it - 1];\
+											indexCount[item.Vert[i].ip - 1]++;\
+										}\
+											\
+										*currI = item.Vert[0].ip - 1;\
+										currI++;\
+										*currI = item.Vert[1].ip - 1;\
+										currI++;\
+										*currI = item.Vert[2].ip - 1;\
+										currI++;\
+										if (item.vertNum == 4) {\
+											*currI = item.Vert[0].ip - 1;\
+											currI++;\
+											*currI = item.Vert[2].ip - 1;\
+											currI++;\
+											*currI = item.Vert[3].ip - 1;\
+											currI++;\
+										}\
+									}
+
+		if (currentMesh->indexType == Mesh::I16) {
+			CalcuVertexAndIterateIndex(uint16_t);
 		}
-		*vertex = newVert[0];
-		vertex++;
-		*vertex = newVert[1];
-		vertex++;
-		*vertex = newVert[2];
-		vertex++;
-		if (item.vertNum == 4) {
+		else {
+			CalcuVertexAndIterateIndex(uint32_t);
+		}
+		//the normal of every vertex will be average of every face
+		for (int i = 0; i != Position.size(); i++) {
+			(vert + i)->Normal = normalize((vert + i)->Normal / (float)indexCount[i]);
+		}
+	}else {
+		currentMesh->indexNum = 0;
+		currentMesh->useIndexList = false;
+
+		currentMesh->vertexList.resize(vertexNum * Mesh::vertexSize);
+		Mesh::Vertex* vertex = reinterpret_cast<Mesh::Vertex*>(currentMesh->vertexList.data);
+		for (auto& item : face) {
+			Mesh::Vertex newVert[4];
+			for (int i = 0; i != item.vertNum; i++) {
+				newVert[i].Normal = Normal[item.Vert[i].in - 1];
+				newVert[i].Position = Position[item.Vert[i].ip - 1];
+				newVert[i].TexCoord = Texcoord[item.Vert[i].it - 1];
+			}
 			*vertex = newVert[0];
+			vertex++;
+			*vertex = newVert[1];
 			vertex++;
 			*vertex = newVert[2];
 			vertex++;
-			*vertex = newVert[3];
-			vertex++;
-		
+			if (item.vertNum == 4) {
+				*vertex = newVert[0];
+				vertex++;
+				*vertex = newVert[2];
+				vertex++;
+				*vertex = newVert[3];
+				vertex++;
+
+			}
 		}
+		currentMesh->vertexNum = vertexNum;
 	}
-	currentMesh->vertexNum = vertexNum;
 
 	return scene;
 }

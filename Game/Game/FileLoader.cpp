@@ -5,7 +5,7 @@ using namespace Game;
 
 size_t FileLoader::FileRead(FileLoader::FilePtr file,Buffer& buffer) {
 	if (!file.ptr) {
-		Log("FileLoader::FileRead : fail to load file,invaild file handle\n");
+		Log("FileLoader::FileRead : fail to load file,invalid file handle\n");
 		return 0;
 	}
 
@@ -32,7 +32,7 @@ size_t FileLoader::FileRead(FileLoader::FilePtr file,Buffer& buffer) {
 
 size_t FileLoader::FileWrite(FileLoader::FilePtr file,void* target,size_t size) {
 	if (!file.ptr) {
-		Log("FileLoader::FileWrite : fail to write to the file invaild file handle\n");
+		Log("FileLoader::FileWrite : fail to write to the file invalid file handle\n");
 		return 0;
 	}
 

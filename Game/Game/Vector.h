@@ -103,7 +103,7 @@ namespace Game {
             _pack_vector_to_m128(rhs)
         );
     }
-
+    /*
     template<typename Vec, typename Vec2>
     inline Vec operator*(const Vec& v1, const Vec2& v2) {
         return  Vec(_mm_mul_ps(
@@ -138,13 +138,131 @@ namespace Game {
             _pack_vector_to_m128(v2)
         )
         );
+    }*/
+
+    template<typename T>
+    inline Vector2 operator+ (const Vector2& vec, const T& t) {
+        return
+            Vector2(_mm_add_ps(
+                _pack_vector_to_m128(vec),
+                _pack_vector_to_m128(t)
+            )
+            );
+    }
+
+    template<typename T>
+    inline Vector2 operator- (const Vector2& vec, const T& t) {
+        return
+            Vector2(_mm_sub_ps(
+                _pack_vector_to_m128(vec),
+                _pack_vector_to_m128(t)
+            )
+            );
+    }
+
+    template<typename T>
+    inline Vector2 operator* (const Vector2& vec, const T& t) {
+        return
+            Vector2(_mm_mul_ps(
+                _pack_vector_to_m128(vec),
+                _pack_vector_to_m128(t)
+            )
+            );
+    }
+
+    inline Vector2 operator/ (const Vector2& vec, float t) {
+        return
+            Vector2(_mm_div_ps(
+                _pack_vector_to_m128(vec),
+                _pack_vector_to_m128(t)
+            )
+            );
+    }
+
+
+    template<typename T>
+    inline Vector3 operator+ (const Vector3& vec, const T& t) {
+        return
+            Vector3(_mm_add_ps(
+                _pack_vector_to_m128(vec),
+                _pack_vector_to_m128(t)
+            )
+            );
+    }
+
+    template<typename T>
+    inline Vector3 operator- (const Vector3& vec, const T& t) {
+        return
+            Vector3(_mm_sub_ps(
+                _pack_vector_to_m128(vec),
+                _pack_vector_to_m128(t)
+            )
+            );
+    }
+
+    template<typename T>
+    inline Vector3 operator* (const Vector3& vec, const T& t) {
+        return
+            Vector3(_mm_mul_ps(
+                _pack_vector_to_m128(vec),
+                _pack_vector_to_m128(t)
+            )
+            );
+    }
+
+    inline Vector3 operator/ (const Vector3& vec, float t) {
+        return
+            Vector3(_mm_div_ps(
+                _pack_vector_to_m128(vec),
+                _pack_vector_to_m128(t)
+            )
+            );
+    }
+
+    template<typename T>
+    inline Vector4 operator+ (const Vector4& vec, const T& t) {
+        return
+            Vector4(_mm_add_ps(
+                _pack_vector_to_m128(vec),
+                _pack_vector_to_m128(t)
+            )
+            );
+    }
+
+    template<typename T>
+    inline Vector4 operator- (const Vector4& vec, const T& t) {
+        return
+            Vector4(_mm_sub_ps(
+                _pack_vector_to_m128(vec),
+                _pack_vector_to_m128(t)
+            )
+            );
+    }
+
+    template<typename T>
+    inline Vector4 operator* (const Vector4& vec, const T& t) {
+        return
+            Vector4(_mm_mul_ps(
+                _pack_vector_to_m128(vec),
+                _pack_vector_to_m128(t)
+            )
+            );
+    }
+
+    inline Vector4 operator/ (const Vector4& vec, float t) {
+        return
+            Vector4(_mm_div_ps(
+                _pack_vector_to_m128(vec),
+                _pack_vector_to_m128(t)
+            )
+            );
     }
 
     Vector3 cross(const Vector3& lhs, const Vector3& rhs);
 
     template<typename Vec>
     inline float length(const Vec& v) {
-        return sqrt(dot(v,v));
+        return sqrt(dot(v, v));
     }
 
     template<typename Vec>
@@ -153,7 +271,12 @@ namespace Game {
     }
 
     template<typename Vec>
-    inline Vec lerp(Vec a,Vec b,float f) {
+    inline Vec lerp(Vec a, Vec b, float f) {
         return a * (1 - f) + b * f;
+    }
+
+    template<typename Vec,typename Vec2>
+    inline Vec castVec(Vec2 source) {
+        return Vec(_pack_vector_to_m128(source));
     }
 }

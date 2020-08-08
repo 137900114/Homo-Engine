@@ -112,6 +112,21 @@
     <ClInclude Include="d3dCommon.h">
       <Filter>d3d</Filter>
     </ClInclude>
+    <ClInclude Include="Color.h">
+      <Filter>Common\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="D3DDescriptorHandleAllocator.h">
+      <Filter>d3d</Filter>
+    </ClInclude>
+    <ClInclude Include="D3DDrawContext.h">
+      <Filter>d3d</Filter>
+    </ClInclude>
+    <ClInclude Include="D3DDataStructure.h">
+      <Filter>d3d</Filter>
+    </ClInclude>
+    <ClInclude Include="GeometryGenerator.h">
+      <Filter>Common\AssertLoader</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -174,6 +189,18 @@
     </ClCompile>
     <ClCompile Include="ShaderLoader.cpp">
       <Filter>d3d</Filter>
+    </ClCompile>
+    <ClCompile Include="D3DDescriptorHandleAllocator.cpp">
+      <Filter>d3d</Filter>
+    </ClCompile>
+    <ClCompile Include="D3DDrawContext.cpp">
+      <Filter>d3d</Filter>
+    </ClCompile>
+    <ClCompile Include="Color.cpp">
+      <Filter>Common\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="GeometryGenerator.cpp">
+      <Filter>Common\AssertLoader</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

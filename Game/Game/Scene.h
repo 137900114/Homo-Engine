@@ -49,7 +49,7 @@ namespace Game {
 		//these objects are all need to be loaded to GPU
 		//
 		std::map<std::string,Mesh> meshs;
-		std::map<std::string,Image> images;
+		std::map<std::string,Texture> images;
 		//constant buffers for scene objects 
 		std::map<std::string,SceneBuffer> buffers;
 		std::map<std::string,SceneMaterial> materials;
@@ -67,12 +67,12 @@ namespace Game {
 
 	class SceneLoader {
 	public:
-		Scene* loadScene(const char* filename);
+		Scene* loadScene(const char* filename,bool useIndex = false);
 		Scene* getScene(const char* sceneName);
 		void destroyScene(const char* scene);
 	private:
 		std::map<std::string, Scene*> scenesMap;
 
-		Scene* ObjPraser(Buffer& data,const char* name);
+		Scene* ObjPraser(Buffer& data,const char* name,bool useIndex);
 	};
 }

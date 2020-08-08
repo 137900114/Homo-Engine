@@ -51,8 +51,9 @@ namespace Game {
 	}
 	
 	ComPtr<ID3DBlob> ShaderLoader::CompileFile(const char* filename,const char* entry,
-		SHADER_TYPE type,const D3D_SHADER_MACRO* macros,UINT compileFlag) {
+ 		SHADER_TYPE type,const D3D_SHADER_MACRO* macros,UINT compileFlag) {
 		ComPtr<ID3DBlob> target,errorCode;
+		int i = 10;
 		Buffer shaderData;
 		if (!gFileLoader->FileReadAndClose(filename, shaderData)) {
 			Log("shader loader fail to read file %s\n",filename);

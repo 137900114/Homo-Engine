@@ -8,11 +8,11 @@ namespace Game {
 		Buffer(size_t size) :size(size),
 			data(reinterpret_cast<uint8_t*>(gMemory->allocate(size)))
 		{}
-		~Buffer() { if (data) release(); }
+		~Buffer() { release(); }
 
 		void release() { if (data) gMemory->deallocate(size, data); data = nullptr, size = 0; }
 		void resize(size_t size) {
-			if (data) release();
+			release();
 			data = reinterpret_cast<uint8_t*>(gMemory->allocate(size));
 			this->size = size;
 		}
@@ -29,7 +29,7 @@ namespace Game {
 			size = buf.size;
 		}
 
-		//the original buffer will be invaild after the move operation
+		//the original buffer will be invalid after the move operation
 		Buffer& operator=(Buffer&& buf) noexcept {
 			release();
 			data = buf.data;

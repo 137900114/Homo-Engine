@@ -8,3 +8,5 @@
 void str_split(std::string str, std::vector<std::string>& target,char dim = ' ');
 
 void getExtensionName(const char* filename, std::string& file_extension, std::string& file_name);
+
+void printBuffer(const void* data,size_t size);

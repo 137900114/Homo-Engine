@@ -63,21 +63,26 @@ namespace Game {
 	}
 
 
-	UUID D3DResourceManager::uploadStatic(void* data, size_t size, D3D12_RESOURCE_DESC desc,
+	UUID D3DResourceManager::uploadStaticBuffer(void* data, size_t size,
 		D3D12_RESOURCE_STATES initState,bool isConstantBuffer) {
+
+		size_t requiredWidth = size;
 		if (isConstantBuffer) {
 			//round up the buffer because constant buffer has to be the multiple of 256
-			desc.Width = (desc.Width + 255) & ~(255);
+			requiredWidth = (requiredWidth + 255) & ~(255);
 		}
 
 		StaticResource res;
-		res.uploadBuffer = gpuAllocator.CreateResource(desc, D3D12_HEAP_TYPE_UPLOAD,
+		res.uploadBuffer = gpuAllocator.CreateResource(CD3DX12_RESOURCE_DESC::Buffer(requiredWidth), D3D12_HEAP_TYPE_UPLOAD,
 			D3D12_RESOURCE_STATE_GENERIC_READ,nullptr);
-		res.buffer = gpuAllocator.CreateResource(desc, D3D12_HEAP_TYPE_DEFAULT,
+		res.buffer = gpuAllocator.CreateResource(CD3DX12_RESOURCE_DESC::Buffer(requiredWidth), D3D12_HEAP_TYPE_DEFAULT,
 			initState, nullptr);
+		res.type = BUFFER;
 
 		if (res.buffer == nullptr || res.uploadBuffer == nullptr) {
-			return UUID::invaild;
+			gpuAllocator.ReleaseResource(res.buffer);
+			gpuAllocator.ReleaseResource(res.uploadBuffer);
+			return UUID::invalid;
 		}
 
 		res.uploadBuffer->Map(0, nullptr,&res.bufferWriter);
@@ -107,7 +112,8 @@ namespace Game {
 			D3D12_RESOURCE_STATE_GENERIC_READ, nullptr);
 
 		if (res.buffer == nullptr) {
-			return UUID::invaild;
+			gpuAllocator.ReleaseResource(res.buffer);
+			return UUID::invalid;
 		}
 
 		res.buffer->Map(0, nullptr,& res.bufferWriter);
@@ -151,7 +157,7 @@ namespace Game {
 			return NOT_FOUND;
 		}
 		//if the original buffer capacity is smaller than the buffer size
-		//we throw a invaild buffer size state code
+		//we throw a invalid buffer size state code
 		else if (diter->second.size < size) {
 			return INVAILD_BUFFER_SIZE;
 		}
@@ -163,7 +169,7 @@ namespace Game {
 
 	bool D3DResourceManager::releaseResource(UUID token) {
 		//release a empty token is vaild.we do nothing and return a true
-		if (token == UUID::invaild)
+		if (token == UUID::invalid)
 			return true;
 
 		auto siter = staticResource.find(token);
@@ -200,10 +206,12 @@ namespace Game {
 			else if (item.second.uploadBuffer != nullptr) {
 				//if the data have been uploaded but the upload buffer is not released 
 				//release the buffer
-				item.second.uploadBuffer->Unmap(0,nullptr);
+				if(item.second.type == BUFFER)
+					item.second.uploadBuffer->Unmap(0,nullptr);
 				gpuAllocator.ReleaseResource(item.second.uploadBuffer);
 			}
 		}
+
 
 		if (barriers.empty()) return;
 
@@ -211,7 +219,28 @@ namespace Game {
 
 		//distribute copy commands
 		for (auto item : uploadWaitingList) {
-			cmdLis->CopyResource(item->buffer.Get(),item->uploadBuffer.Get());
+			if(item->type == BUFFER)
+				cmdLis->CopyResource(item->buffer.Get(),item->uploadBuffer.Get());
+			else if(item->type == TEXTURE2D){
+				D3D12_SUBRESOURCE_DATA data;
+				data.pData = item->textureData.data;
+				data.RowPitch = item->textureData.rowPitch;
+				data.SlicePitch = item->textureData.slicePitch;
+
+				UpdateSubresources(cmdLis,
+					item->buffer.Get(),
+					item->uploadBuffer.Get(),
+					0, 0, 1,
+					&data);
+			}
+			else if (item->type == TEXTURE2D_ARRAY) {
+				D3D12_SUBRESOURCE_DATA* subData = reinterpret_cast<D3D12_SUBRESOURCE_DATA*>(item->textureArray.subTex);
+				UpdateSubresources(cmdLis,
+					item->buffer.Get(),
+					item->uploadBuffer.Get(),
+					0, 0, item->textureArray.subTexNum,
+					subData);
+			}
 		}
 
 		barriers.clear();
@@ -259,19 +288,19 @@ namespace Game {
 
 
 		if (_target == staticResource.end()) {
-			Log("d3d 12 : resource manager : invaild target resource to copy\n");
+			Log("d3d 12 : resource manager : invalid target resource to copy\n");
 			return false;
 		}
 
 		if (_target->second.currState != D3D12_RESOURCE_STATE_COPY_DEST) {
-			Log("d3d 12 : resource manager : invaild target resource state, the resource state must be "
+			Log("d3d 12 : resource manager : invalid target resource state, the resource state must be "
 				"copy dest while copying\n");
 			return false;
 		}
 
 		if (_ssource != staticResource.end()) {
 			if (!_ssource->second.uploaded || _ssource->second.currState != D3D12_RESOURCE_STATE_COPY_SOURCE) {
-				Log("d3d 12 : resource manager : invaild state for copy source it is not uploaded or the"
+				Log("d3d 12 : resource manager : invalid state for copy source it is not uploaded or the"
 					"resource state is not D3D12_RESOURCE_STATE_COPY_DEST currently\n");
 				return false;
 			}
@@ -282,7 +311,7 @@ namespace Game {
 		else{
 			auto _dsource = dynamicResource.find(target);
 			if (_dsource != dynamicResource.end()) {
-				Log("d3d 12 : resource manager : invaild source resource for copy\n");
+				Log("d3d 12 : resource manager : invalid source resource for copy\n");
 				return false;
 			}
 
@@ -309,4 +338,113 @@ namespace Game {
 
 		gpuAllocator.finalize();
 	}
+
+	UUID D3DResourceManager::uploadTexture(void* data, size_t width, size_t height, D3D12_RESOURCE_STATES initState,
+		size_t rowPitch, size_t mipLevel,DXGI_FORMAT format) {
+		mipLevel = 1;
+		//currently the mipLevel can only be 1
+		
+		D3D12_RESOURCE_DESC tDesc = {};
+		tDesc.Format = format;
+		tDesc.DepthOrArraySize = 1;
+		tDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+		tDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		tDesc.Width = width;
+		tDesc.Height = height;
+		tDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+		tDesc.MipLevels = mipLevel;
+		tDesc.SampleDesc = {1,0};
+		
+		//we will create upload buffer later;
+		StaticResource sRes;
+		sRes.buffer = gpuAllocator.CreateResource(tDesc, D3D12_HEAP_TYPE_DEFAULT,initState);
+		sRes.uploaded = false;
+		sRes.uploadBuffer = nullptr;
+		sRes.textureData.data = data;
+		sRes.textureData.rowPitch = rowPitch;
+		sRes.textureData.slicePitch = rowPitch * height;
+		sRes.currState = initState;
+		sRes.type = TEXTURE2D;
+
+		if (sRes.buffer == nullptr) return UUID::invalid;
+
+		size_t uploadRequiredSize = GetRequiredIntermediateSize(sRes.buffer.Get(),0,1);
+		sRes.uploadBuffer = gpuAllocator.CreateResource(CD3DX12_RESOURCE_DESC::Buffer(uploadRequiredSize),
+			D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ);
+
+		if (sRes.uploadBuffer == nullptr) {
+			gpuAllocator.ReleaseResource(sRes.uploadBuffer);
+			gpuAllocator.ReleaseResource(sRes.buffer);
+			return UUID::invalid;
+		}
+
+		UUID newID = UUID::generate();
+		while (staticResource.find(newID) != staticResource.end() ||
+			dynamicResource.find(newID) != dynamicResource.end()) {
+			newID = UUID::generate();
+		}
+
+		staticResource[newID] = sRes;
+		return newID;
+	}
+}
+
+Game::UUID Game::D3DResourceManager::uploadTexture(Texture& image, D3D12_RESOURCE_STATES initState, size_t mipLevel) {
+	switch (image.type) {
+	case TEXTURE_TYPE::CUBE:
+		return uploadCubeTexture(image.width,image.height,
+			initState,image.subDataDescriptor);
+	case TEXTURE_TYPE::TEXTURE2D:
+		return uploadTexture(image.data.data, image.width, image.height, initState, image.rowPitch,
+			mipLevel, DXGI_FORMAT_R8G8B8A8_UNORM);
+	default:
+		Log("d3d12 resource manager : fail to upload texture,invalid texture type");
+		return Game::UUID::invalid;
+	}
+}
+
+
+Game::UUID Game::D3DResourceManager::uploadCubeTexture(size_t width,size_t height,D3D12_RESOURCE_STATES initState,
+		Game::SubTextureDescriptor* desc,DXGI_FORMAT format) {
+	
+	
+	D3D12_RESOURCE_DESC rDesc = {};
+	rDesc.Format = format;
+	rDesc.DepthOrArraySize = 6;
+	rDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	rDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+	rDesc.Width = width, rDesc.Height = height;
+	rDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	rDesc.MipLevels = 1;
+	rDesc.SampleDesc = {1,0};
+
+
+	StaticResource sRes;
+	sRes.textureArray.subTex = desc;
+	sRes.textureArray.subTexNum = 6;
+	sRes.type = TEXTURE2D_ARRAY;
+	sRes.buffer = gpuAllocator.CreateResource(rDesc, D3D12_HEAP_TYPE_DEFAULT, initState);
+	sRes.currState = initState;
+	sRes.uploadBuffer = nullptr;
+	sRes.uploaded = false;
+
+	if (sRes.buffer == nullptr) {
+		return Game::UUID::invalid;
+	}
+
+	size_t requiredSize = GetRequiredIntermediateSize(sRes.buffer.Get(), 0, 6);
+	sRes.uploadBuffer = gpuAllocator.CreateResource( CD3DX12_RESOURCE_DESC::Buffer(requiredSize),
+		D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_GENERIC_READ);
+	if (sRes.uploadBuffer == nullptr) {
+		gpuAllocator.ReleaseResource(sRes.buffer);
+		return UUID::invalid;
+	}
+
+	Game::UUID uuid = Game::UUID::generate();
+	while (staticResource.find(uuid) != staticResource.end()) {
+		uuid = Game::UUID::generate();
+	}
+	
+	staticResource[uuid] = sRes;
+	return Game::UUID::invalid;
 }

@@ -37,6 +37,13 @@ namespace Game {
 		//it is pow(2,powPolygon = 4) = 16 )
 		virtual void cricle2D(Vector2 pos, float radius, Vector4 Color, float depth = .8f, int powPoly = 4) = 0;
 
+		//Draw a polygon,you should specify every point's position in the polygon
+		//The points in the polygon must be in the order of clock wise
+		//the polygon must be a convex polygon
+		virtual void polygon2D(const Vector2* verts, int vertNum, Vector4 Color, float depth = .5f) = 0;
+
+		//draw a loaded image onto the scene whose position is at center in world space.
+		virtual void image2D(Texture& image,Vector2 center,Vector2 size,float rotate,float depth) = 0;
 		
 		//draw a scene
 		virtual void bindScene(Scene * scene) = 0;
@@ -44,6 +51,12 @@ namespace Game {
 		//draw a single mesh object on the scene use the material.If the material is nullptr
 		//then will use a default material
 		virtual void drawSingleMesh(Mesh& mesh,SceneMaterial* mat = nullptr) = 0;
+
+		//set a texture as the skybox.The texture must be a CUBE type
+		//virtual void setSkyBox(Texture& sky) = 0;
+
+		//set a camera as the main camera of the scene
+		//virtual void setCamera(Camera& cam);
 		
 		//release all the meshs and buffer data in the scene
 		virtual void releaseScene(Scene& scene) = 0;
