@@ -6,6 +6,4 @@
 #include "Quaternion.h"
 #include "Random.h"
 #include "Color.h"
-
-
-#define PI 3.1415926
+#include "MathFunctions.h"

@@ -31,7 +31,7 @@ namespace Game {
 			return mCurrSRVUAVHeap.Get();
 		}
 
-		bool initiailize(ID3D12Device* dev);
+		bool initialize(ID3D12Device* dev);
 	private:
 		ComPtr<ID3D12DescriptorHeap> createDescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE type,
 														  size_t size);

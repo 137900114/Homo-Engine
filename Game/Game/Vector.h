@@ -36,6 +36,9 @@ namespace Game {
         //don't call this function to construct the vector.
         Vector2(__m128 m);
 
+        template<typename T>
+        Vector2(T vec) : Vector2(_pack_vector_to_m128(vec)) {}
+
         inline float& operator[](int index) { return raw[index]; }
         inline const float& operator[](int index) const { return raw[index]; }
     };
@@ -62,6 +65,11 @@ namespace Game {
         //don't call this function to construct the vector.
         Vector3(__m128 m);
 
+        Vector3(Vector2 vec, float z) :x(vec.x), y(vec.y), z(z) {}
+
+        template<typename T>
+        Vector3(T vec) : Vector3(_pack_vector_to_m128(vec)) {}
+
         inline float& operator[](int index) { return raw[index]; }
         inline const float& operator[](int index) const { return raw[index]; }
     };
@@ -86,6 +94,10 @@ namespace Game {
 
         //don't call this function to construct the vector.
         Vector4(__m128 m);
+
+        Vector4(Vector3 vec,float w):x(vec.x),y(vec.y),z(vec.z),w(w){}
+        Vector4(Vector2 vec, float z, float w) :x(vec.x), y(vec.y),z(z),w(w) {}
+
 
         inline float& operator[](int index) { return raw[index]; }
         inline const float& operator[](int index) const { return raw[index]; }

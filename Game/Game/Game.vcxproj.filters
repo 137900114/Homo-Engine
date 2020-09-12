@@ -26,6 +26,12 @@
     <Filter Include="Common\Scene">
       <UniqueIdentifier>{2501e68c-9b25-48ec-87c9-c89ca4911d3c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ThridParty">
+      <UniqueIdentifier>{5a5398f4-a9e5-4ea7-89a9-5410dbebc6da}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Common\Memory">
+      <UniqueIdentifier>{173e8b1e-ffc3-47a1-8e7e-7d89d08b94ce}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="IRuntimeModule.hpp">
@@ -42,9 +48,6 @@
     </ClInclude>
     <ClInclude Include="WindowsApplication.h">
       <Filter>windows</Filter>
-    </ClInclude>
-    <ClInclude Include="Memory.h">
-      <Filter>Common</Filter>
     </ClInclude>
     <ClInclude Include="D3DRenderModule.h">
       <Filter>d3d</Filter>
@@ -67,9 +70,6 @@
     <ClInclude Include="Quaternion.h">
       <Filter>Common\Math</Filter>
     </ClInclude>
-    <ClInclude Include="Buffer.h">
-      <Filter>Common</Filter>
-    </ClInclude>
     <ClInclude Include="PipelineStateObject.h">
       <Filter>d3d</Filter>
     </ClInclude>
@@ -91,16 +91,10 @@
     <ClInclude Include="Math.h">
       <Filter>Common\Math</Filter>
     </ClInclude>
-    <ClInclude Include="Image.h">
-      <Filter>Common\AssertLoader</Filter>
-    </ClInclude>
     <ClInclude Include="Mesh.h">
       <Filter>Common\AssertLoader</Filter>
     </ClInclude>
     <ClInclude Include="Scene.h">
-      <Filter>Common\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="uuid.h">
       <Filter>Common\Scene</Filter>
     </ClInclude>
     <ClInclude Include="D3DResourceManager.h">
@@ -127,6 +121,63 @@
     <ClInclude Include="GeometryGenerator.h">
       <Filter>Common\AssertLoader</Filter>
     </ClInclude>
+    <ClInclude Include="tinyxml2.h">
+      <Filter>ThridParty</Filter>
+    </ClInclude>
+    <ClInclude Include="MathFunctions.h">
+      <Filter>Common\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Common\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="MeshRenderer.h">
+      <Filter>Common\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneRootNode.h">
+      <Filter>Common\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneObject.h">
+      <Filter>Common\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Material.h">
+      <Filter>Common\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneCamera.h">
+      <Filter>Common\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneLight.h">
+      <Filter>Common\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneComponent.h">
+      <Filter>Common\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Texture.h">
+      <Filter>Common\AssertLoader</Filter>
+    </ClInclude>
+    <ClInclude Include="uuid.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="DrawCall.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="Shader.h">
+      <Filter>Common\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="MArray.h">
+      <Filter>Common\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="Memory.h">
+      <Filter>Common\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="Buffer.h">
+      <Filter>Common\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="CountPtr.h">
+      <Filter>Common\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="ShaderDataStructure.h">
+      <Filter>Common\Scene</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -136,9 +187,6 @@
       <Filter>windows</Filter>
     </ClCompile>
     <ClCompile Include="BaseApplication.cpp">
-      <Filter>Common</Filter>
-    </ClCompile>
-    <ClCompile Include="Memory.cpp">
       <Filter>Common</Filter>
     </ClCompile>
     <ClCompile Include="D3DRenderModule.cpp">
@@ -169,9 +217,6 @@
     <ClCompile Include="Random.cpp">
       <Filter>Common\Math</Filter>
     </ClCompile>
-    <ClCompile Include="Image.cpp">
-      <Filter>Common\AssertLoader</Filter>
-    </ClCompile>
     <ClCompile Include="Mesh.cpp">
       <Filter>Common\AssertLoader</Filter>
     </ClCompile>
@@ -201,6 +246,30 @@
     </ClCompile>
     <ClCompile Include="GeometryGenerator.cpp">
       <Filter>Common\AssertLoader</Filter>
+    </ClCompile>
+    <ClCompile Include="tinyxml2.cpp">
+      <Filter>ThridParty</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>Common\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="MeshRenderer.cpp">
+      <Filter>Common\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneRootNode.cpp">
+      <Filter>Common\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Texture.cpp">
+      <Filter>Common\AssertLoader</Filter>
+    </ClCompile>
+    <ClCompile Include="Material.cpp">
+      <Filter>Common\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Memory.cpp">
+      <Filter>Common\Memory</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneCamera.cpp">
+      <Filter>Common\Scene</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -11,7 +11,7 @@ Game::D3DDrawContext::D3DDrawContext(ID3D12PipelineState* pso, ID3D12RootSignatu
 	parameterNum(parameterNum),vbv(vbv),vertNum(vertNum),vertexBaseIndex(vertBaseIndex),
 	isIndexed(false),topology(topology),drawInstanced(instanceNum > 1),instanceNum(instanceNum)
 {
-	parameters = gMemory->NewArray<ShaderParameter>(parameterNum);
+	parameters = gMemory->NewArray<D3DShaderParameter>(parameterNum);
 	this->pso = pso;
 	this->rootSig = rootSig;
 	this->descriptorHeap = descHeap;
@@ -28,11 +28,12 @@ Game::D3DDrawContext::D3DDrawContext(ID3D12PipelineState* pso, ID3D12RootSignatu
 	drawInstanced(instanceNum > 1), instanceNum(instanceNum),
 	descriptorHeap(descHeap){
 
-	parameters = gMemory->NewArray<ShaderParameter>(parameterNum);
+	parameters = gMemory->NewArray<D3DShaderParameter>(parameterNum);
 	this->pso = pso;
 	this->rootSig = rootSig;
 	this->descriptorHeap = descHeap;
 }
+
 
 
 void Game::D3DDrawContext::BindOnCommandList(ID3D12GraphicsCommandList* cmdList) {
@@ -71,7 +72,7 @@ void Game::D3DDrawContext::BindOnCommandList(ID3D12GraphicsCommandList* cmdList)
 			break;
 		}
 	}
-
+	
 	cmdList->IASetPrimitiveTopology(topology);
 	cmdList->IASetVertexBuffers(0, 1, &vbv);
 
@@ -79,11 +80,12 @@ void Game::D3DDrawContext::BindOnCommandList(ID3D12GraphicsCommandList* cmdList)
 
 	if (isIndexed) {
 		cmdList->IASetIndexBuffer(&ibv);
-		cmdList->DrawIndexedInstanced(indexNum, instanceNum, indexBaseIndex, vertexBaseIndex,0);
+		cmdList->DrawIndexedInstanced(indexNum, instanceNum, indexBaseIndex, vertexBaseIndex, 0);
 	}
 	else {
 		cmdList->DrawInstanced(vertNum, instanceNum, vertexBaseIndex, 0);
 	}
+	
 }
 
 

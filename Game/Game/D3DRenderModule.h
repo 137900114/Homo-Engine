@@ -38,15 +38,21 @@ namespace Game {
 		virtual void cricle2D(Vector2 pos, float radius, Vector4 Color, float depth, int powPoly) override;
 		virtual void polygon2D(const Vector2* verts,int vertNum,Vector4 Color,float depth) override;
 		virtual void image2D(Texture& image, Vector2 center, Vector2 size,float rotate, float depth) override;
+		virtual void image2D(Texture& image, Vector2* center,Vector2* size,float* rotate,float* depth,size_t num) override;
 
+
+		virtual void skybox(Texture& texture,SceneCamera* camera) override;
 
 		virtual void set2DViewPort(Vector2 center,float height) override;
 
-		virtual void bindScene(Scene* scene) override;
+		//virtual void bindScene(Scene* scene) override;
 		virtual void releaseScene(Scene& scene) override;
 		virtual void uploadScene(Scene& scene) override;
-
-		virtual void drawSingleMesh(Mesh& mesh,SceneMaterial* mat) override;
+#ifdef _DEBUG
+		virtual void drawSingleMesh(Mesh& mesh,Material* mat) override;
+		virtual void drawSingleScene(Scene* scene) override;
+#endif
+		virtual void parseDrawCall(DrawCall* dc,int num) override;
 	private:
 		void create2DImageDrawCall();
 
@@ -54,13 +60,19 @@ namespace Game {
 		void waitForFenceValue(uint64_t fence);
 
 		bool initialize2D();
-		bool initializeSingleMesh();
 		bool initialize2DImage();
-		void draw2D();
+		bool initialize3D();
+		bool initializeSkyBox();
 
+		void draw2D();
+		void drawSkyBox();
+
+#ifdef _DEBUG
+		bool initializeSingleMesh();
 		void drawSingleMesh();
 		void updateSingleMeshData();
 		void initializeSingleMeshData();
+#endif
 
 		int width;
 		int height;
@@ -125,23 +137,30 @@ namespace Game {
 
 		struct {
 			std::vector<ImageVertex2D> imageVertexList;
-			std::vector<D3D12_GPU_DESCRIPTOR_HANDLE>  images;
+			std::vector<D3D12_GPU_DESCRIPTOR_HANDLE>  textures;
+			std::vector<size_t> images_num;
 
 			UUID imageUploadVertex;
 			size_t currImageVSize;
 		} Image2DBuffer;
 
+
 		struct {
-			Scene* currScene;
+			UUID box;
+			Texture* sky;
+			SceneCamera* camera;
+			D3D12_VERTEX_BUFFER_VIEW boxvbv;
 
-		} Data3D;
+			bool active = false;
+		}SkyBoxBuffer;
 
+#ifdef _DEBUG
 		//this pass can only be used to test whether the mesh data 
 		//and render system doing well currently we don't consider 
 		//material
 		struct {
 			Mesh* mesh = nullptr;
-			SceneMaterial* material = nullptr;
+			Material* material = nullptr;
 			ObjectPass objectData;
 			UUID gpuTransform;
 			float dis;
@@ -154,7 +173,7 @@ namespace Game {
 			CameraPass cameraData;
 			UUID gpuCameraData;
 		}SingleMesh;
-
+#endif
 
 		std::vector<D3DDrawContext*> drawCommandList;
 

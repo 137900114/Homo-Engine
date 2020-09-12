@@ -5,6 +5,7 @@
 #include "Timer.h"
 #include "InputBuffer.h"
 #include "GeometryGenerator.h"
+#include "MeshRenderer.h"
 
 //build the modules work together
 
@@ -15,8 +16,11 @@ namespace Game {
 		bool initialize() override;
 		void finalize() override {  }
 	private:
-		Texture t;
-		Mesh mesh;
+		//Mesh mesh;
+		//Scene* scene;
+		//Texture tex[2];
+		Texture sky;
+		Mesh box;
 	};
 
 
@@ -35,44 +39,60 @@ namespace Game {
 	TextureLoader gImageLoader;
 	Test t;
 
-	SceneLoader gSceneLoader;
+	//SceneLoader gSceneLoader;
+	SceneManager gSceneManager;
 	Timer gTimer;
 
+	extern SceneLoader gSceneLoader;
+
+	MeshDrawCallMaker gMeshDrawCallMaker;
 #ifdef _WIN64
-	IRuntimeModule* moduleList[] = {&mem,gFileLoader,gGraphic,&t,&gTimer,&gInput};
-	WindowsApplication wapp(1200, 750, moduleList, _countof(moduleList));
+	IRuntimeModule* moduleList[] = {&mem,gFileLoader,&gSceneManager,&gMeshDrawCallMaker,gGraphic,&t,&gTimer,&gInput};
+	WindowsApplication wapp(1920, 1080, moduleList, _countof(moduleList));
 
 	IApplication* app = &wapp;
 #endif
 
-
 	bool Test::initialize() {
-		/*image[0] = gImageLoader.loadImage("2.bmp");
-		image[1] = gImageLoader.loadImage("1.bmp");
-		CubeMapFileArray files;
-		files.front = "DefaultSkybox\\default_skybox_front.bmp";
-		files.back = "DefaultSkybox\\default_skybox_back.bmp";
-		files.right = "DefaultSkybox\\default_skybox_right.bmp";
-		files.left = "DefaultSkybox\\default_skybox_left.bmp";
-		files.up = "DefaultSkybox\\default_skybox_up.bmp";
-		files.down = "DefaultSkybox\\default_skybox_down.bmp";
 
-		cubeImage = gImageLoader.loadCubeMap(files);
-		*/
-
-		//gGraphic->set2DViewPort(Vector2(), 2.);
+		gSceneManager.loadScene("test_scene1.dae",true);
 		
-		mesh = std::move(GeometryGenerator::generateCube(false));
+		SceneCamera* camera = gSceneManager.GetMainCamera();
+		camera->transform.Rotation.x = 6.505;
+		camera->transform.Position = Vector3(-12, 5.5, -12);
 
-		gGraphic->drawSingleMesh(mesh);
-		//t = std::move(gImageLoader.loadImage("DefaultSkyBox\\default_skybox_back.bmp"));
+		SceneLight* light = gSceneManager.GetMainLight();
+		light->transform.Position = Vector3(0.,0.,-1.);
+
+
+		CubeMapFileArray cube;
+		cube.back = "DefaultSkyBox\\default_skybox_back.bmp";
+		cube.front = "DefaultSkyBox\\default_skybox_front.bmp";
+		cube.down = "DefaultSkyBox\\default_skybox_down.bmp";
+		cube.left = "DefaultSkyBox\\default_skybox_left.bmp";
+		cube.right = "DefaultSkyBox\\default_skybox_right.bmp";
+		cube.up = "DefaultSkyBox\\default_skybox_up.bmp";
+
+		sky = std::move(gImageLoader.loadCubeMap(cube));
+		gGraphic->skybox(sky, camera);
+		gGraphic->set2DViewPort(Vector2(0., 0.),3.);
 
 		return true;
 	}
 
 	void Test::tick() {
-		//gGraphic->image2D(t, Vector2(0., 0.), Vector2(.5, .5), 0., 0.3);
-		//gGraphic->image2D(image[1], Vector2(0., -.25), Vector2(.5, .25), 0., .3);
-		//gGraphic->point2D(Vector2(), 0.2, ConstColor::Black);
+		if (gInput.KeyHold(InputBuffer::A))
+			gSceneManager.GetMainCamera()->transform.Rotation.y -= gTimer.DeltaTime();
+		else if (gInput.KeyHold(InputBuffer::D))
+			gSceneManager.GetMainCamera()->transform.Rotation.y += gTimer.DeltaTime();
+		else if (gInput.KeyHold(InputBuffer::W))
+			gSceneManager.GetMainCamera()->transform.Rotation.x -= gTimer.DeltaTime();
+		else if (gInput.KeyHold(InputBuffer::S))
+			gSceneManager.GetMainCamera()->transform.Rotation.x += gTimer.DeltaTime();
+		else if (gInput.KeyHold(InputBuffer::Q))
+			gSceneManager.GetMainCamera()->transform.Position.x += gTimer.DeltaTime();
+		else if (gInput.KeyHold(InputBuffer::E))
+			gSceneManager.GetMainCamera()->transform.Position.x -= gTimer.DeltaTime();
+
 	}
 }

@@ -1,10 +1,11 @@
 #pragma once
 #include "d3dCommon.h"
 #include "Common.h"
+#include "DrawCall.h"
 
 namespace Game {
 
-	struct ShaderParameter{
+	struct D3DShaderParameter{
 			D3D12_ROOT_PARAMETER_TYPE type;
 			union {
 				D3D12_GPU_VIRTUAL_ADDRESS address;
@@ -15,21 +16,21 @@ namespace Game {
 				} constant32Bit;
 			}Data;
 			uint32_t parameterIndex;
-			ShaderParameter() {
+			D3DShaderParameter() {
 
 			}
 
-			ShaderParameter(D3D12_GPU_VIRTUAL_ADDRESS gva,D3D12_ROOT_PARAMETER_TYPE type,uint32_t parameterIndex):
+			D3DShaderParameter(D3D12_GPU_VIRTUAL_ADDRESS gva,D3D12_ROOT_PARAMETER_TYPE type,uint32_t parameterIndex):
 				type(type),parameterIndex(parameterIndex){
 				Data.address = gva;
 			}
 
-			ShaderParameter(D3D12_GPU_DESCRIPTOR_HANDLE handle, D3D12_ROOT_PARAMETER_TYPE type, uint32_t parameterIndex):
+			D3DShaderParameter(D3D12_GPU_DESCRIPTOR_HANDLE handle, D3D12_ROOT_PARAMETER_TYPE type, uint32_t parameterIndex):
 				type(type),parameterIndex(parameterIndex){
 				Data.handle = handle;
 			}
 
-			void DoCopy(const ShaderParameter& other) {
+			void DoCopy(const D3DShaderParameter& other) {
 				type = other.type;
 				switch (type) {
 				case D3D12_ROOT_PARAMETER_TYPE_CBV:
@@ -45,12 +46,12 @@ namespace Game {
 				parameterIndex = other.parameterIndex;
 			}
 
-			ShaderParameter& operator=(const ShaderParameter& other) {
+			D3DShaderParameter& operator=(const D3DShaderParameter& other) {
 				DoCopy(other);
 				return *this;
 			}
 
-			ShaderParameter(const ShaderParameter& other) {
+			D3DShaderParameter(const D3DShaderParameter& other) {
 				DoCopy(other);
 			}
 
@@ -59,7 +60,8 @@ namespace Game {
 
 	class D3DDrawContext {
 	public:
-		inline bool SetShaderParameter(uint32_t index,ShaderParameter shaderParameter) {
+
+		inline bool SetShaderParameter(uint32_t index,D3DShaderParameter shaderParameter) {
 			if (index > parameterNum) {
 				return false;
 			}
@@ -99,13 +101,14 @@ namespace Game {
 		uint32_t indexNum;
 		uint32_t indexBaseIndex;
 
-		ShaderParameter*  parameters;
+		D3DShaderParameter*  parameters;
 		uint32_t parameterNum;
 
 		D3D_PRIMITIVE_TOPOLOGY topology;
 
 		bool drawInstanced;
 		uint32_t instanceNum;
+
 	};
 
 

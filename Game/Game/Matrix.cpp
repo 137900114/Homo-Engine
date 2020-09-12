@@ -1,6 +1,5 @@
 #include "Matrix.h"
-#include <algorithm>
-
+#include "MathFunctions.h"
 
 struct _PackedMat4x4 {
 	__m128 m[4];
@@ -360,6 +359,7 @@ __m128 _Multi4x4(_PackedMat4x4& mat,__m128 vec) {
 	temp1 = _mm_shuffle_ps(v,v,_MM_SHUFFLE(3,2,3,2));\
 	temp0 = _mm_add_ps(temp0,temp1);\
 	v = _mm_add_ps(_mm_shuffle_ps(temp0,temp0,_MM_SHUFFLE(0,0,0,0)),_mm_shuffle_ps(temp0,temp0,_MM_SHUFFLE(1,1,1,1)));
+
 	__m128 v0 = _mm_mul_ps(mat.m[0],vec);
 	SUM_VEC(v0);
 	__m128 v1 = _mm_mul_ps(mat.m[1],vec);
@@ -514,9 +514,9 @@ namespace Game {
 			& x = axis[0],& y = axis[1],&z = axis[2],oc = 1 - c;
 
 		float buffer[16] = {
-			x*x*oc + c  , x*y*oc - s*z , x*z*oc + y*s , 0 , 
-			x*y*oc + s*z, y*y*oc + c   , y*z*oc - x*s , 0 ,
-			x*z*oc - s*y, y*z*oc + s*x , z*z*oc + c   , 0 ,
+			x*x*oc + c  , x*y*oc + s*z , x*z*oc - y*s , 0 , 
+			x*y*oc - s*z, y*y*oc + c   , y*z*oc + x*s , 0 ,
+			x*z*oc + s*y, y*z*oc - s*x , z*z*oc + c   , 0 ,
 			0           , 0            , 0            , 1 
 		};
 
@@ -589,5 +589,74 @@ namespace Game {
 		};
 
 		return Mat4x4(buffer);
+	}
+
+	Mat4x4 MatrixRotation(Vector3 eulerAngle) {
+		//rotation order axis x,axis y,axis z
+		float cr = cos(eulerAngle.x), sr = sin(eulerAngle.x);
+		float cb = cos(eulerAngle.y), sb = sin(eulerAngle.y);
+		float ca = cos(eulerAngle.z), sa = sin(eulerAngle.z);
+
+		
+		
+		float buffer[16] = {
+			ca * cb, ca * sb * sr - sa * cr, ca * sb * cr + sa * sr, 0,
+			sa * cb, sa * sb * sr + ca * cr, sa * sb * cr - ca * sr, 0,
+		   -sb     , cb * sr               , cb * cr               , 0,
+		    0      , 0                     , 0                     , 1
+		};
+
+		return Mat4x4(buffer);
+	}
+
+	void UnpackTransfrom(Mat4x4 trans,Vector3& position,Vector3& rotation,Vector3& scale) {
+
+		float scal_z = sqrt(trans.a[2][0] * trans.a[2][0] + trans.a[2][1] * trans.a[2][1] + trans.a[2][2] * trans.a[2][2]);
+		float sb = - trans.a[2][0] / scal_z;
+		float cb = sqrt(1 - sb * sb);
+
+		float  cr, sr;
+		float ca_scal_x = trans.a[0][0] / cb;
+		float sa_scal_y = trans.a[1][0] / cb;
+		sr = trans.a[2][1] / (cb * scal_z);
+		cr = trans.a[2][2] / (cb * scal_z);
+
+		float ca_scal_y;float sa_scal_x;
+		if (abs(cr) > 1e-3) {
+			sa_scal_x = (-trans.a[0][1] + ca_scal_x * sb * sr) / cr;
+			ca_scal_y = ( trans.a[1][1] - sa_scal_y * sb * sr) / cr;
+		}
+		else {
+			ca_scal_y = (-trans.a[1][2] + sa_scal_y * sb * cr) / sr;
+			sa_scal_x = ( trans.a[0][2] - ca_scal_x * sb * cr) / sr;
+		}
+
+		float scal_y = sqrt(ca_scal_y * ca_scal_y + sa_scal_y * sa_scal_y);
+		float scal_x = sqrt(ca_scal_x * ca_scal_x + sa_scal_x * sa_scal_x);
+
+		float ca = ca_scal_x / scal_x, sa = sa_scal_x / scal_x;
+
+		float a01 = ca_scal_x * sb * sr - sa * cr, a02 = ca_scal_x * sb * cr + sa * sr;
+		float a11 = sa_scal_y * sb * sr + ca * cr, a12 = sa_scal_y * sb * cr - ca * sr;
+
+		if (abs(a01 - trans.a[0][1]) > 1e-3 || 
+			abs(a11 - trans.a[1][1]) > 1e-3 ||
+			abs(a02 - trans.a[0][2]) > 1e-3 ||
+			abs(a12 - trans.a[1][2]) > 1e-3) {
+			cb = -cb;
+			ca = trans.a[0][0] / (cb * scal_x);
+			sa = trans.a[1][0] / (cb * scal_y);
+			cr = trans.a[2][1] / (cb * scal_z);
+			cr = trans.a[2][2] / (cb * scal_z);
+		}
+
+		rotation = Vector3(get_angle(sr, cr), get_angle(sb, cb), get_angle(sa, ca));
+		position = Vector3(trans.a[0][3], trans.a[1][3], trans.a[2][3]);
+		scale = Vector3(scal_x, scal_y, scal_z);
+	}
+
+
+	Mat4x4 PackTransfrom(Vector3 position,Vector3 rotation,Vector3 scaling) {
+		return mul(MatrixPosition(position),mul(MatrixRotation(rotation),MatrixScale(scaling)));
 	}
 }

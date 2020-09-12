@@ -73,6 +73,7 @@ namespace Game {
 		std::vector<PageAllocator> allocators;
 		static const size_t blockSize[];
 		static const size_t max_block_size = 1024;
+		bool isFinalized = false;
 	};
 
 }

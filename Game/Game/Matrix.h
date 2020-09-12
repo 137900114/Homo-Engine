@@ -121,6 +121,10 @@ namespace Game {
 
 	Mat4x4 MatrixPosition(Vector3 Offset);
 	Mat4x4 MatrixRotation(Vector3 axis,float angle);
+	Mat4x4 MatrixRotation(Vector3 eulerAngle);
+
+	void UnpackTransfrom(Mat4x4 trans,Vector3& position,Vector3& rotation,Vector3& scaling);
+	Mat4x4 PackTransfrom(Vector3 position,Vector3 rotation,Vector3 scaling);
 
 	Mat4x4 MatrixRotateX(float angle);
 	Mat4x4 MatrixRotateY(float angle);

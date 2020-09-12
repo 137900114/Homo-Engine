@@ -21,9 +21,11 @@
   <ItemGroup>
     <ClInclude Include="BaseApplication.h" />
     <ClInclude Include="Buffer.h" />
+    <ClInclude Include="Camera.h" />
     <ClInclude Include="Color.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="Config.h" />
+    <ClInclude Include="CountPtr.h" />
     <ClInclude Include="d3d12x.h" />
     <ClInclude Include="d3dCommon.h" />
     <ClInclude Include="D3DDataStructure.h" />
@@ -31,23 +33,36 @@
     <ClInclude Include="D3DDrawContext.h" />
     <ClInclude Include="D3DRenderModule.h" />
     <ClInclude Include="D3DResourceManager.h" />
+    <ClInclude Include="DrawCall.h" />
     <ClInclude Include="FileLoader.h" />
     <ClInclude Include="GeometryGenerator.h" />
     <ClInclude Include="GraphicModule.h" />
     <ClInclude Include="IApplication.h" />
-    <ClInclude Include="Image.h" />
+    <ClInclude Include="MArray.h" />
+    <ClInclude Include="Shader.h" />
+    <ClInclude Include="ShaderDataStructure.h" />
+    <ClInclude Include="Texture.h" />
     <ClInclude Include="InputBuffer.h" />
     <ClInclude Include="IRuntimeModule.hpp" />
+    <ClInclude Include="Material.h" />
     <ClInclude Include="Math.h" />
+    <ClInclude Include="MathFunctions.h" />
     <ClInclude Include="Matrix.h" />
     <ClInclude Include="Mesh.h" />
+    <ClInclude Include="MeshRenderer.h" />
     <ClInclude Include="PipelineStateObject.h" />
     <ClInclude Include="Quaternion.h" />
     <ClInclude Include="Random.h" />
     <ClInclude Include="RootSignature.h" />
     <ClInclude Include="Scene.h" />
+    <ClInclude Include="SceneCamera.h" />
+    <ClInclude Include="SceneComponent.h" />
+    <ClInclude Include="SceneLight.h" />
+    <ClInclude Include="SceneObject.h" />
+    <ClInclude Include="SceneRootNode.h" />
     <ClInclude Include="ShaderLoader.h" />
     <ClInclude Include="Timer.h" />
+    <ClInclude Include="tinyxml2.h" />
     <ClInclude Include="uuid.h" />
     <ClInclude Include="Vector.h" />
     <ClInclude Include="Memory.h" />
@@ -55,6 +70,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BaseApplication.cpp" />
+    <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Color.cpp" />
     <ClCompile Include="Common.cpp" />
     <ClCompile Include="D3DDescriptorHandleAllocator.cpp" />
@@ -63,19 +79,24 @@
     <ClCompile Include="D3DRenderModule.cpp" />
     <ClCompile Include="FileLoader.cpp" />
     <ClCompile Include="GeometryGenerator.cpp" />
-    <ClCompile Include="Image.cpp" />
+    <ClCompile Include="Material.cpp" />
+    <ClCompile Include="SceneCamera.cpp" />
+    <ClCompile Include="Texture.cpp" />
     <ClCompile Include="InputBuffer.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Matrix.cpp" />
     <ClCompile Include="Memory.cpp" />
     <ClCompile Include="Mesh.cpp" />
+    <ClCompile Include="MeshRenderer.cpp" />
     <ClCompile Include="PipelineStateObject.cpp" />
     <ClCompile Include="plantfrom.cpp" />
     <ClCompile Include="Random.cpp" />
     <ClCompile Include="RootSignature.cpp" />
     <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="SceneRootNode.cpp" />
     <ClCompile Include="ShaderLoader.cpp" />
     <ClCompile Include="Timer.cpp" />
+    <ClCompile Include="tinyxml2.cpp" />
     <ClCompile Include="uuid.cpp" />
     <ClCompile Include="Vector.cpp" />
     <ClCompile Include="WindowsApplication.cpp" />
@@ -192,9 +213,10 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <Optimization>MaxSpeed</Optimization>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>

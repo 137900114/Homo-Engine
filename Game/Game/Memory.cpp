@@ -1,6 +1,5 @@
 #include "Memory.h"
 #include <stdlib.h>
-#include <DirectXMath.h>
 
 using namespace std;
 
@@ -94,6 +93,7 @@ size_t Game::MemoryModule::get_block_index(size_t size) {
 size_t Game::MemoryModule::get_block_size(size_t index) { return blockSize[index]; }
 
 void* Game::MemoryModule::allocate(size_t size) {
+	if (size == 0 || isFinalized) return nullptr;
 	if (size <= max_block_size) {
 		size_t index = get_block_index(size);
 		//printf("%d ",size);
@@ -105,6 +105,7 @@ void* Game::MemoryModule::allocate(size_t size) {
 }
 
 void Game::MemoryModule::deallocate(size_t size, void* mem) {
+	if (isFinalized) return;
 	if (size <= max_block_size) {
 		size_t index = get_block_index(size);
 		allocators[index].deallocate(mem);
@@ -126,4 +127,5 @@ void Game::MemoryModule::tick() {
 
 void Game::MemoryModule::finalize() {
 	mem_page_pool.release();
+	isFinalized = true;
 }

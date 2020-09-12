@@ -1,9 +1,10 @@
 #pragma once
 #include "IRuntimeModule.hpp"
 #include "Vector.h"
-#include "Image.h"
+#include "Texture.h"
 #include "Common.h"
 #include "Scene.h"
+#include "DrawCall.h"
 
 namespace Game {
 
@@ -44,14 +45,22 @@ namespace Game {
 
 		//draw a loaded image onto the scene whose position is at center in world space.
 		virtual void image2D(Texture& image,Vector2 center,Vector2 size,float rotate,float depth) = 0;
-		
+
+		//draw a loaded image onto the scene whose position is at center in world space.
+		//draw multiple textures at one time
+		virtual void image2D(Texture& image, Vector2* center,Vector2* size, float* rotate, float* depth,size_t num) = 0;
+
 		//draw a scene
-		virtual void bindScene(Scene * scene) = 0;
+		//virtual void bindScene(Scene * scene) = 0;
 
+#ifdef _DEBUG
 		//draw a single mesh object on the scene use the material.If the material is nullptr
-		//then will use a default material
-		virtual void drawSingleMesh(Mesh& mesh,SceneMaterial* mat = nullptr) = 0;
+		//then will use a default material.This api can only be used for testing.
+		virtual void drawSingleMesh(Mesh& mesh,Material* mat = nullptr) = 0;
 
+		//draw a single scene.This api can only be used for testing
+		virtual void drawSingleScene(Scene* scene) = 0;
+#endif
 		//set a texture as the skybox.The texture must be a CUBE type
 		//virtual void setSkyBox(Texture& sky) = 0;
 
@@ -63,5 +72,10 @@ namespace Game {
 
 		//upload some data in the scene to the rendering module
 		virtual void uploadScene(Scene& scene) = 0;
+
+		//parse drawcalls from outside and insert them into the command queue
+		virtual void parseDrawCall(DrawCall* dc,int num) = 0;
+
+		virtual void skybox(Texture& texture,SceneCamera* mainCamera) = 0;
 	};
 }

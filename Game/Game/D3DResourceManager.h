@@ -4,7 +4,7 @@
 #include "uuid.h"
 #include <map>
 #include "Buffer.h"
-#include "Image.h"
+#include "Texture.h"
 
 
 namespace Game {

@@ -6,7 +6,7 @@ const D3DDescriptorHandle D3DDescriptorHandle::invalid = {
 	0,0
 };
 
-bool D3DDescriptorHandleAllocator::initiailize(ID3D12Device* device) {
+bool D3DDescriptorHandleAllocator::initialize(ID3D12Device* device) {
 	this->device = device;
 
 

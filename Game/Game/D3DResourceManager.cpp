@@ -446,5 +446,5 @@ Game::UUID Game::D3DResourceManager::uploadCubeTexture(size_t width,size_t heigh
 	}
 	
 	staticResource[uuid] = sRes;
-	return Game::UUID::invalid;
+	return uuid;
 }

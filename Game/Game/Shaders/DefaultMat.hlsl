@@ -44,7 +44,9 @@ struct VertexOut{
 VertexOut VS(VertexIn input){
     VertexOut output;
     output.Normal = mul((float3x3)transInvWorld ,input.Normal);
+    //output.Normal = input.Normal;
     output.Position = mul(world,float4(input.Position,1.f));
+    //output.Position = float4(world,1.);
     output.Position = mul(proj,output.Position);
 
     return output;
