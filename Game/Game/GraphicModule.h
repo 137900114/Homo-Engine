@@ -50,9 +50,6 @@ namespace Game {
 		//draw multiple textures at one time
 		virtual void image2D(Texture& image, Vector2* center,Vector2* size, float* rotate, float* depth,size_t num) = 0;
 
-		//draw a scene
-		//virtual void bindScene(Scene * scene) = 0;
-
 #ifdef _DEBUG
 		//draw a single mesh object on the scene use the material.If the material is nullptr
 		//then will use a default material.This api can only be used for testing.
@@ -77,5 +74,9 @@ namespace Game {
 		virtual void parseDrawCall(DrawCall* dc,int num) = 0;
 
 		virtual void skybox(Texture& texture,SceneCamera* mainCamera) = 0;
+
+		virtual bool parseShader(Shader* shader) = 0;
+
+		virtual void resize() = 0;
 	};
 }

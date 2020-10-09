@@ -2,7 +2,7 @@
 #include "Memory.h"
 
 namespace Game {
-	extern MemoryModule* gMemory;
+	extern MemoryModule gMemory;
 }
 
 Game::D3DDrawContext::D3DDrawContext(ID3D12PipelineState* pso, ID3D12RootSignature* rootSig,
@@ -11,7 +11,7 @@ Game::D3DDrawContext::D3DDrawContext(ID3D12PipelineState* pso, ID3D12RootSignatu
 	parameterNum(parameterNum),vbv(vbv),vertNum(vertNum),vertexBaseIndex(vertBaseIndex),
 	isIndexed(false),topology(topology),drawInstanced(instanceNum > 1),instanceNum(instanceNum)
 {
-	parameters = gMemory->NewArray<D3DShaderParameter>(parameterNum);
+	parameters = gMemory.NewArray<D3DShaderParameter>(parameterNum);
 	this->pso = pso;
 	this->rootSig = rootSig;
 	this->descriptorHeap = descHeap;
@@ -28,7 +28,7 @@ Game::D3DDrawContext::D3DDrawContext(ID3D12PipelineState* pso, ID3D12RootSignatu
 	drawInstanced(instanceNum > 1), instanceNum(instanceNum),
 	descriptorHeap(descHeap){
 
-	parameters = gMemory->NewArray<D3DShaderParameter>(parameterNum);
+	parameters = gMemory.NewArray<D3DShaderParameter>(parameterNum);
 	this->pso = pso;
 	this->rootSig = rootSig;
 	this->descriptorHeap = descHeap;
@@ -91,7 +91,7 @@ void Game::D3DDrawContext::BindOnCommandList(ID3D12GraphicsCommandList* cmdList)
 
 Game::D3DDrawContext::~D3DDrawContext() {
 	//release the temporary allocated memory
-	gMemory->DeleteArray(parameterNum, parameters);
+	gMemory.DeleteArray(parameterNum, parameters);
 	this->pso = nullptr;
 	this->rootSig = nullptr;
 	this->descriptorHeap = nullptr;

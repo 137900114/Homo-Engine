@@ -17,6 +17,8 @@ namespace Game {
         return _mm_shuffle_ps(temp, temp, _MM_SHUFFLE(0, 0, 0, 0));
     }
 
+    
+
 
     //Don't invoke this function external.Call the dot function 
     //to get two vectors' dot product 
@@ -41,6 +43,15 @@ namespace Game {
 
         inline float& operator[](int index) { return raw[index]; }
         inline const float& operator[](int index) const { return raw[index]; }
+
+        template<typename T>
+        inline Vector2 operator+=(const T& other) { *this = *this + other; return *this; }
+
+        template<typename T>
+        inline Vector2 operator-=(const T& other) { *this = *this - other; return *this; }
+
+
+        inline bool operator==(const Vector2& other) { return x == other.x && y == other.y; }
     };
 
     template<>
@@ -72,6 +83,15 @@ namespace Game {
 
         inline float& operator[](int index) { return raw[index]; }
         inline const float& operator[](int index) const { return raw[index]; }
+
+        template<typename T>
+        inline Vector3 operator+=(const T& other) { *this = *this + other; return *this; }
+        
+        template<typename T>
+        inline Vector3 operator-=(const T& other) { *this = *this - other; return *this; }
+
+
+        inline bool operator==(const Vector3& other) { return x == other.x && y == other.y && z == other.z; }
     };
 
     template<>
@@ -101,6 +121,14 @@ namespace Game {
 
         inline float& operator[](int index) { return raw[index]; }
         inline const float& operator[](int index) const { return raw[index]; }
+
+        template<typename T>
+        inline Vector4 operator+=(const T& other) { *this = *this + other; return *this; }
+
+        template<typename T>
+        inline Vector4 operator-=(const T& other) { *this = *this - other; return *this; }
+
+        inline bool operator==(const Vector4& other) { return x == other.x && y == other.y && z == other.z && w == other.w; }
     };
 
     template<>
@@ -115,42 +143,6 @@ namespace Game {
             _pack_vector_to_m128(rhs)
         );
     }
-    /*
-    template<typename Vec, typename Vec2>
-    inline Vec operator*(const Vec& v1, const Vec2& v2) {
-        return  Vec(_mm_mul_ps(
-            _pack_vector_to_m128(v1),
-            _pack_vector_to_m128(v2)
-        )
-        );
-    }
-
-    template<typename Vec, typename Vec2>
-    inline Vec operator+(const Vec& v1, const Vec2& v2) {
-        return  Vec(_mm_add_ps(
-            _pack_vector_to_m128(v1),
-            _pack_vector_to_m128(v2)
-        )
-        );
-    }
-
-    template<typename Vec, typename Vec2>
-    inline Vec operator-(const Vec& v1, const Vec2& v2) {
-        return  Vec(_mm_sub_ps(
-            _pack_vector_to_m128(v1),
-            _pack_vector_to_m128(v2)
-        )
-        );
-    }
-
-    template<typename Vec>
-    inline Vec operator/(const Vec& v1, float v2) {
-        return  Vec(_mm_div_ps(
-            _pack_vector_to_m128(v1),
-            _pack_vector_to_m128(v2)
-        )
-        );
-    }*/
 
     template<typename T>
     inline Vector2 operator+ (const Vector2& vec, const T& t) {
@@ -282,6 +274,7 @@ namespace Game {
         return v / length(v);
     }
 
+    //a * (1 - f) + b * f
     template<typename Vec>
     inline Vec lerp(Vec a, Vec b, float f) {
         return a * (1 - f) + b * f;

@@ -23,6 +23,8 @@ void Material::write_to_cbuffer(size_t offset, size_t size, void* value, CBuffer
 Material::Material(ShaderParameter* SPArray,size_t SPNum,std::string name,Shader* shader) : name(name),shader(shader){
 
 	int maxIndexNum = 0;
+	constantBufferCapability = 256;
+	constantBufferSize = sizeof(Mat4x4) * 2;
 	for (int i = 0; i != SPNum; i++) {
 		ShaderParameter SP = SPArray[i];
 		if (shared_parameters.find(SP.name) != shared_parameters.end()
@@ -60,7 +62,7 @@ Material::Material(ShaderParameter* SPArray,size_t SPNum,std::string name,Shader
 					continue;
 				}
 			}
-			else if (SP.type >= ShaderParameter::OWNED_CBUFFER) {
+			else if (SP.type >= ShaderParameter::OWNED_INT) {
 				Log("ERROR:invaild attribute type for shader parameter if the shader parameter is a owned attribute "
 						"then the attribute type of the shader parameter should be owned,error parameter %s"
 					" while creating the material %s\n",SP.name.c_str(),name.c_str());
@@ -69,12 +71,17 @@ Material::Material(ShaderParameter* SPArray,size_t SPNum,std::string name,Shader
 			shared_parameters[SP.name] = SP;
 		}
 		else if(SP.attribute == ShaderParameter::OWNED){
-			if (SP.type < ShaderParameter::OWNED_CBUFFER) {
+			if (SP.type < ShaderParameter::OWNED_INT) {
 				Log("ERROR:invaild attribute type for shader parameter if the shader parameter is a shared attribute "
 					"then the attribute type of the shader parameter should be shared %s"
 					"while creating material %s\n",SP.name.c_str(),name.c_str());
 				continue;
 			}
+			if (constantBufferCapability < SP.padding_size + constantBufferSize) {
+				constantBufferCapability += 256;
+			}
+			SP.offset = constantBufferSize;
+			constantBufferSize += SP.padding_size;
 			owned_parameters[SP.name] = SP;
 		}
 		else if (SP.attribute == ShaderParameter::INVAILD) {
@@ -82,61 +89,6 @@ Material::Material(ShaderParameter* SPArray,size_t SPNum,std::string name,Shader
 			continue;
 		}
 	}
-}
-
-ShaderParameter::ShaderParameter(std::string name,size_t offset,size_t padding_size,int regID,ShaderParameter::ShaderParameterType type):name(name) {
-	if (type >= ShaderParameterType::TEXTURE2D) {
-		Log("ERROR:fail to create texture only constant parameter can be created by this constructor,creating parameter %s" , name.c_str());
-		this->attribute = INVAILD;
-	}
-	else {
-
-		this->attribute = SHARED;
-		this->offset = offset;
-		this->regID = regID;
-		this->padding_size = padding_size;
-
-		//the constant buffer is 4 
-		switch (type) {
-		case ShaderParameterType::FLOAT:
-		case ShaderParameterType::INT:
-			this->size = 4;
-			break;
-		case ShaderParameterType::FLOAT2:
-			this->size = sizeof(Vector2);
-			break;
-
-		case ShaderParameterType::FLOAT3:
-			this->size = sizeof(Vector3);
-			break;
-		case ShaderParameterType::FLOAT4:
-			this->size = sizeof(Vector4);
-			break;
-		case ShaderParameterType::FLOAT4X4:
-			this->size = sizeof(Mat4x4);
-			break;
-		}
-		this->type = type;
-	}
-}
-
-
-ShaderParameter::ShaderParameter(std::string name,int regID,ShaderParameterType type ): name(name) {
-	if (type >= ShaderParameterType::OWNED_CBUFFER) {
-		this->attribute = OWNED;
-		
-	}
-	else if(type >= ShaderParameter::TEXTURE2D){
-		this->attribute = SHARED;
-	}
-	else {
-		Log("ERROR:fail to create shader parameter,invaild shader parameter type,parameter name %s",name.c_str());
-		this->attribute = INVAILD;
-	}
-
-	this->regID = regID;
-	this->type = type;
-	
 }
 
 bool Material::QueryData(std::string& name,void* value,ShaderParameter::ShaderParameterType type) {

@@ -5,7 +5,7 @@
 #include "SceneLight.h"
 
 namespace Game {
-	extern MemoryModule* gMemory;
+	extern MemoryModule gMemory;
 
 }
 
@@ -13,15 +13,15 @@ Game::SceneRootNode::~SceneRootNode() {
 	for (int i = 0; i != childs.size(); i++) {
 		switch (childs[i]->type) {
 		case OBJECT:
-			gMemory->Delete(reinterpret_cast<SceneObject*>(childs[i]));
+			gMemory.Delete(reinterpret_cast<SceneObject*>(childs[i]));
 			break;
 		case NODE:
-			gMemory->Delete(childs[i]);
+			gMemory.Delete(childs[i]);
 			break;
 		case CAMERA:
-			gMemory->Delete(reinterpret_cast<SceneCamera*>(childs[i]));
+			gMemory.Delete(reinterpret_cast<SceneCamera*>(childs[i]));
 		case LIGHT:
-			gMemory->Delete(reinterpret_cast<SceneLight*>(childs[i]));
+			gMemory.Delete(reinterpret_cast<SceneLight*>(childs[i]));
 		default:
 			break;
 		}
@@ -33,7 +33,7 @@ Game::SceneRootNode::~SceneRootNode() {
 	for (int i = 0; i != components.size(); i++) {
 		size_t componentSize = components[i]->componentSize();
 		components[i]->~SceneComponent();
-		gMemory->deallocate(componentSize,components[i]);
+		gMemory.deallocate(componentSize,components[i]);
 	}
 	
 }

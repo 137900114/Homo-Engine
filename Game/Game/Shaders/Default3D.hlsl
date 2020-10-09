@@ -32,6 +32,12 @@ cbuffer StandardCamera : register(b1){
 #define LIGHT_TYPE_POINT 0
 #define LIGHT_TYPE_DIRECTIONAL 1
 
+#define Ambient float3(0.25,0.25,0.25)
+#define Fresnel float3(0.02,0.02,0.02)
+#define DiffuseAlbedo  float3(0.25,0.25,0.25)
+#define Rougthness  float(.25f)
+#define Shininess     float(.75f)
+
 cbuffer StanderdLight : register(b2){
     int lightType;       //stands for the type of the light
     float3 lightVec;     //if the light's type is directional light light vector stands for the direction of the light,
@@ -59,16 +65,61 @@ VertexOut VS(StandardVertexIn input){
     return output;
 }
 
+float3 SchlickFresnel(float3 R0,float3 normal,float3 LightDir){
+
+    float f0 = 1. - saturate(dot(normal,LightDir));
+
+    float3 reflection = R0 + (1. - R0) * (f0 * f0 * f0 * f0 * f0);
+
+    return reflection;
+}
+
+
+float3 BinlingPhone(float3 LightIntensity,float3 LightDir,float3 normal,float3 viewDir){
+    float m = Shininess * 256.f;
+    float3 halfVec = normalize(normal + viewDir);
+
+    float roughFactor = (m + 8.f) * .125f * pow(saturate(dot(halfVec,normal)),m);
+    float3 specular = SchlickFresnel(Fresnel,halfVec,LightDir);
+
+    specular = specular * roughFactor;
+    //specular = specular / (specular + 1.f);
+
+    return (specular + DiffuseAlbedo) * LightIntensity;
+}
+
+
+
+float3 DirectionalLight(float3 LightDir,float3 normal,float3 ViewDir,float3 LightIntensity){
+    LightDir = - LightDir;
+    float ndotl = saturate(dot(LightDir,normal));
+
+    float3 intensity = LightIntensity * ndotl;
+    return BinlingPhone(intensity,LightDir,normal,ViewDir);
+}
+
+float3 PointLight(float3 LightPos,float3 normal,float3 ViewDir,float3 WorldPos,float3 LightIntensity){
+    float3 LightDir = normalize(LightPos - WorldPos);
+    float ndotl = saturate(dot(LightDir,normal));
+
+    float3 intensity = LightIntensity * ndotl;
+    return BinlingPhone(intensity,LightDir,normal,ViewDir);
+
+}
+
+
+
+
 float4 PS(VertexOut input) : SV_TARGET {
-    float3 target = float3(0.2,0.2,0.2);
+    float3 target = Ambient;
     input.Normal = normalize(input.Normal);
-    //we don't want to add negative value to the result 
+    //we don't want to add negative value to the result
+    float3 ViewDir = normalize(cameraPosition - input.worldPos);
+
     if(lightType == LIGHT_TYPE_DIRECTIONAL){
-        target += (float3)lightIntensity * 
-        clamp(dot(lightVec,- input.Normal),0.f,1.f);
+        target += DirectionalLight(lightVec,input.Normal,ViewDir,lightIntensity);
     }else if(lightType == LIGHT_TYPE_POINT){
-        float3 lightDir  = normalize(lightVec);
-        target += (float3)lightIntensity * clamp(dot(lightDir,input.Normal),0.f,1.f);
+        target += PointLight(lightVec,input.Normal,ViewDir,input.worldPos,lightIntensity);//(float3)lightIntensity * clamp(dot(lightDir,input.Normal),0.f,1.f);
     }
 
     return float4(target,1.);

@@ -3,7 +3,7 @@
 #include "Common.h"
 
 namespace Game {
-	extern FileLoader* gFileLoader;
+	extern FileLoader gFileLoader;
 }
 
 
@@ -28,14 +28,14 @@ Game::Texture Game::TextureLoader::loadImage(const char* filename) {
 	}
 
 	FileLoader::FilePtr file;
-	if (!gFileLoader->Exists(filename,&file)) {
+	if (!gFileLoader.Exists(filename,&file)) {
 		Log("image loader : the file %s doesn't exists in search path!\n",filename);
 		return std::move(Texture());
 	}
 
 	Buffer fileData;
-	gFileLoader->FileRead(file,fileData);
-	gFileLoader->FileClose(file);
+	gFileLoader.FileRead(file,fileData);
+	gFileLoader.FileClose(file);
 
 	switch (type) {
 	case BMP:

@@ -5,6 +5,8 @@
 #include "Vector.h"
 
 namespace Game {
+	struct Mat4x4;
+	struct Mat3x3;
 
 	struct Mat2x2 {
 		union {
@@ -44,6 +46,8 @@ namespace Game {
 		//Inverse and determinate cost a lot,using these two
 		//operation too ofthen is not recomended
 		float det() const;
+
+		Mat3x3(const Mat4x4& mat);
 
 		//Inverse and determinate cost a lot,using these two
 		//operation too ofthen is not recomended
@@ -90,7 +94,7 @@ namespace Game {
 
 			    a[0][0] = a00, a[0][1] = a01, a[0][2] = a02, a[0][3] = a03,
 				a[1][0] = a10, a[1][1] = a11, a[1][2] = a12, a[1][3] = a13,
-				a[2][0] = a10, a[2][1] = a21, a[2][2] = a22, a[2][3] = a23,
+				a[2][0] = a20, a[2][1] = a21, a[2][2] = a22, a[2][3] = a23,
 				a[3][0] = a30, a[3][1] = a31, a[3][2] = a32, a[3][3] = a33;
 		}
 

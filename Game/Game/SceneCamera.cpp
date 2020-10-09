@@ -10,12 +10,12 @@ namespace Game {
 }
 
 void Game::SceneCamera::UpdateCameraBufferView() {
-	Mat4x4 position = MatrixPosition(transform.Position);
-	Mat4x4 rotation = MatrixRotation(transform.Rotation);
+	Mat4x4 position = MatrixPosition(transform.GetWorldPosition());
+	Mat4x4 rotation = MatrixRotation(transform.GetWorldRotation());
 
 	cameraBufferPtr->invView = mul(position, rotation);
 	cameraBufferPtr->view = cameraBufferPtr->invView.R();
-
+	
 	Mat4x4 view = cameraBufferPtr->view;
 
 	cameraBufferPtr->view = view.T();
@@ -41,7 +41,7 @@ void Game::SceneCamera::UpdateCameraBufferProjection() {
 
 
 Game::CBuffer* Game::SceneCamera::GetCameraCBuffer() {
-	cameraBufferPtr->cameraPosition = transform.Position;
+	cameraBufferPtr->cameraPosition = transform.GetWorldPosition();
 	cameraBufferPtr->timeLine = Game::gTimer.TotalTime();
 	
 

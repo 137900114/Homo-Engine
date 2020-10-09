@@ -22,45 +22,6 @@ namespace Game {
 		int regID;
 	};
 
-	struct ShaderParameter {
-		enum ShaderParameterType {
-			INT = 0,//a 32 bit int number
-			FLOAT = 1,//a 32 bit float number
-			FLOAT2 = 2,//a 2 dimension 32 bit float vector
-			FLOAT3 = 3,//a 3 dimension 32 bit float vector
-			FLOAT4 = 4,//a 4 dimension 32 bit float vector
-			FLOAT4X4 = 5,//a 4x4 dimension 32 bit float matrix
-			TEXTURE2D = 0x10,//a dimension texture
-			TEXTURECUBE = 0x11,// a cube texture
-
-			OWNED_CBUFFER = 0x20//this parameter will be binded to an other cbuffer
-		} type;
-
-		enum ShaderParameterAttribute {
-			SHARED,//the Shader parameter is shadered among all the objects
-			OWNED,//the Shader parameter belong to one object.one object may have a different value to one other object 
-			INVAILD
-		} attribute;
-
-		std::string name;
-		size_t offset;//the offset in the buffer for constants
-		size_t padding_size;
-		size_t size;
-		//the register will be used for constant buffer or texture buffer
-		//if the register id is -1 system will allocate a new reg id
-		int regID;
-
-		ShaderParameter(): attribute(INVAILD) {
-
-		}
-
-
-		//a shared constant shader parameter constructor
-		ShaderParameter(std::string name, size_t offset,size_t padding_size,int regID, ShaderParameterType SPType);
-		//a owned shader parameter constructor or shared texture parameter constructor
-		ShaderParameter(std::string name, int regID,ShaderParameterType SPType);
-	};
-
 	class Material {
 		friend class MeshDrawCallMaker;
 	public:
@@ -104,8 +65,11 @@ namespace Game {
 		bool SetTexture2D(std::string& name  ,Texture* value);
 		bool SetTextureCube(std::string& name,Texture* value);
 
-		
 		bool SetSharedCBuffer(int regID,void* data,size_t size);
+
+		inline uint32_t GetOwnedConstantBufferSize() {
+			return constantBufferCapability;
+		}
 
 		Material(ShaderParameter* SPArray, size_t SPNum,std::string name,Shader* shader = nullptr);
 
@@ -156,6 +120,9 @@ namespace Game {
 		int current_max_reg_idt = 0;
 		std::string name;
 		Shader* shader;
+
+		uint32_t constantBufferCapability;
+		uint32_t constantBufferSize;
 	};
 
 	

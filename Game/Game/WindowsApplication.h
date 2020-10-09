@@ -7,6 +7,7 @@
 
 namespace Game {
 	class WindowsApplication : public IApplication{
+		friend class EditorGUIModule;
 	public:
 		virtual bool initialize() override;
 		virtual void tick() override;
@@ -15,10 +16,13 @@ namespace Game {
 		virtual void messageBox(const char* title, const char* content) override{
 			MessageBoxA(NULL,content,title,MB_OK);
 		}
+		virtual void Quit() override;
 
 		virtual bool YesNoBox(const char* title,const char* content) override {
 			return MessageBoxA(NULL,content,title,MB_YESNO) == IDYES;
 		}
+
+		virtual std::string getPath(const char* filter) override;
 
 		virtual void setTitle(const char* title) override;
 
@@ -35,7 +39,7 @@ namespace Game {
 
 		virtual const Config& getSysConfig() override { return config; }
 
-		void Quit() { quit = true; }
+		virtual void resize(uint32_t width,uint32_t height) override;
 	private:
 		bool quit = false;
 		HWND winHandle;

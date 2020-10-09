@@ -6,6 +6,15 @@
 #include "InputBuffer.h"
 #include "GeometryGenerator.h"
 
+#include "compile_config.h"
+
+#ifdef ENGINE_MODE_EDITOR
+#include "EditorGUIModule.h"
+namespace Game {
+	extern EditorGUIModule gEditorGUIModule;
+}
+#endif
+
 using namespace Game;
 
 #ifndef PI
@@ -17,6 +26,7 @@ namespace Game {
 	extern FileLoader* gFileLoader;
 	extern Timer gTimer;
 	extern InputBuffer gInput;
+
 }
 
 void GetHardwareAdapter(IDXGIFactory4* factory,IDXGIAdapter1** adapter) {
@@ -273,13 +283,35 @@ bool D3DRenderModule::initialize() {
 	Image2DBuffer.currImageVSize = 0;
 	Image2DBuffer.imageUploadVertex = UUID::invalid;
 
+	GpuStallEvent = CreateEventEx(nullptr, NULL, NULL, EVENT_ALL_ACCESS);
+	if (!GpuStallEvent) {
+		Log("d3d12 error : fail to create gpu event\n");
+		return false;
+	}
+	isInitialized = true;
+
 	return true;
+}
+
+
+void D3DRenderModule::FlushCommandQueue() {
+	fenceVal++;
+	mCmdQueue->Signal(mFence.Get(), fenceVal);
+
+	if (mFence->GetCompletedValue() < fenceVal) {
+		if (FAILED(mFence->SetEventOnCompletion(fenceVal,GpuStallEvent))) {
+			Log("d3d12 error : fail to set event on completion system will quit\n");
+			dynamic_cast<WindowsApplication*>(app)->Quit();
+			return;
+		}
+
+		WaitForSingleObject(GpuStallEvent, INFINITE);
+	}
+
 }
 
 void D3DRenderModule::tick() {
 	//------------------------------------//
-	if (mFence->GetCompletedValue() < fenceVal) 
-		return;
 
 #ifdef _DEBUG
 	updateSingleMeshData();
@@ -323,11 +355,16 @@ void D3DRenderModule::tick() {
 
 	for (auto& cmd : drawCommandList) {
 		cmd->BindOnCommandList(mCmdList.Get());
-		gMemory->Delete(cmd);
+		gMemory.Delete(cmd);
 	}
 	drawCommandList.clear();
 
 	drawSkyBox();
+
+	//draw the gui items
+#ifdef _WIN64
+	gEditorGUIModule.draw(mCmdList.Get());
+#endif
 
 	mCmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
 		mBackBuffers[mCurrentFrameIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -340,13 +377,14 @@ void D3DRenderModule::tick() {
 	mCmdQueue->ExecuteCommandLists(_countof(toExcute),toExcute);
 
 	mCurrentFrameIndex = (mCurrentFrameIndex + 1) % mBackBufferNum;
-	mCmdQueue->Signal(mFence.Get(), ++fenceVal);
 
 	if (FAILED(mSwapChain->Present(0, 0))) {
 		Log("fail to present swap chain\n");
 		dynamic_cast<WindowsApplication*>(app)->Quit();
 		return;
 	}
+
+	FlushCommandQueue();
 	//------------------------------------//
 }
 
@@ -899,8 +937,8 @@ void D3DRenderModule::create2DImageDrawCall() {
 		vbv.StrideInBytes = sizeof(ImageVertex2D);
 
 		offset += sizeof(ImageVertex2D) * 6 * Image2DBuffer.images_num[i] ;
-
-		D3DDrawContext* draw = gMemory->New<D3DDrawContext>(mPsos["Image2D"]->GetPSO(), mRootSignatures["Image2D"].Get(),
+		
+		D3DDrawContext* draw = gMemory.New<D3DDrawContext>(mPsos["Image2D"]->GetPSO(), mRootSignatures["Image2D"].Get(),
 			mDescriptorAllocator.getDescriptorHeap(),2, vbv, 6 * Image2DBuffer.images_num[i]);
 		
 		draw->SetShaderParameter(1, D3DShaderParameter(ProjResource->GetGPUVirtualAddress(),
@@ -1176,21 +1214,21 @@ void D3DRenderModule::parseDrawCall(DrawCall* dc,int num) {
 	for (int i = 0; i < num; i++) {
 		for (int j = 0; j != dc[i].drawTargetNums; j++) {
 			Mesh* mesh = dc[i].meshList[j].mesh;
-			DrawCall::Parameter* owned_parameter = &dc->OwnedParameterBuffer[j * dc->parameterNums];
+			DrawCall::Parameter* owned_parameter = &dc->OwnedParameterBuffer[j];
 
-			for (int m = 0; m != dc->parameterNums; m++) {
-				DrawCall::Parameter& currentParam = owned_parameter[m];
-				if (currentParam.buffer->uid == UUID::invalid) {
-					currentParam.buffer->uid = mResourceManager.uploadDynamic(currentParam.buffer->data,
-						CD3DX12_RESOURCE_DESC::Buffer(currentParam.buffer->data.size),true);
-					currentParam.buffer->updated = false;
+			for (int m = 0; m != 3; m++) {
+				if (owned_parameter->buffers[m]->uid == UUID::invalid) {
+					Buffer* targetData = &owned_parameter->buffers[m]->data;
+					owned_parameter->buffers[m]->uid = mResourceManager.uploadDynamic(*targetData,
+						CD3DX12_RESOURCE_DESC::Buffer(targetData->size), true);
 				}
-				else if(currentParam.buffer->updated){
-					mResourceManager.write(currentParam.buffer->uid,currentParam.buffer->data.data,currentParam.buffer->data.size);
-					currentParam.buffer->updated = false;
+				else if (owned_parameter->buffers[m]->updated) {
+					Buffer* targetData = &owned_parameter->buffers[m]->data;
+					mResourceManager.write(owned_parameter->buffers[m]->uid, targetData->data,
+						targetData->size);
+					owned_parameter->buffers[m]->updated = false;
 				}
 			}
-
 
 			if (dc[i].meshList[j].activated) {
 				ID3D12Resource* vertexRes = mResourceManager.getResource(mesh->gpuDataToken.vertex);
@@ -1214,9 +1252,11 @@ void D3DRenderModule::parseDrawCall(DrawCall* dc,int num) {
 				else
 					return;
 
-				ID3D12Resource* objectConstBuffer = mResourceManager.getResource(owned_parameter[0].buffer->uid);
-				ID3D12Resource* cameraBuffer = mResourceManager.getResource(owned_parameter[1].buffer->uid);
-				ID3D12Resource* lightBuffer = mResourceManager.getResource(owned_parameter[2].buffer->uid);
+				D3DDrawContext* newDrawContext;
+
+				ID3D12Resource* objectConstBuffer = mResourceManager.getResource(owned_parameter->objectBuffer->uid);
+				ID3D12Resource* cameraBuffer = mResourceManager.getResource(owned_parameter->cameraBuffer->uid);
+				ID3D12Resource* lightBuffer = mResourceManager.getResource(owned_parameter->lightBuffer->uid);
 
 				if (mesh->useIndexList) {
 					ID3D12Resource* indexRes = mResourceManager.getResource(mesh->gpuDataToken.index);
@@ -1227,26 +1267,25 @@ void D3DRenderModule::parseDrawCall(DrawCall* dc,int num) {
 					ibv.Format = mesh->indexType == Mesh::I32 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT;
 
 					//if the object use default material to render
-					D3DDrawContext* newDrawContext = gMemory->New<D3DDrawContext>(pso, rootSig, heap, 3, vbv, mesh->vertexNum,
+					newDrawContext = gMemory.New<D3DDrawContext>(pso, rootSig, heap, 3, vbv, mesh->vertexNum,
 						ibv, mesh->indexNum);
 
 					newDrawContext->SetShaderParameter(0, D3DShaderParameter(objectConstBuffer->GetGPUVirtualAddress(), D3D12_ROOT_PARAMETER_TYPE_CBV, 0));
 					newDrawContext->SetShaderParameter(1, D3DShaderParameter(cameraBuffer->GetGPUVirtualAddress(), D3D12_ROOT_PARAMETER_TYPE_CBV, 1));
 					newDrawContext->SetShaderParameter(2, D3DShaderParameter(lightBuffer->GetGPUVirtualAddress(), D3D12_ROOT_PARAMETER_TYPE_CBV, 2));
 
-					drawCommandList.push_back(newDrawContext);
 				}
 				else {
 
 					//if the object use default material to render
-					D3DDrawContext* newDrawContext = gMemory->New<D3DDrawContext>(pso, rootSig, heap, 3, vbv, mesh->vertexNum);
+					newDrawContext = gMemory.New<D3DDrawContext>(pso, rootSig, heap, 3, vbv, mesh->vertexNum);
 
 					newDrawContext->SetShaderParameter(0, D3DShaderParameter(objectConstBuffer->GetGPUVirtualAddress(), D3D12_ROOT_PARAMETER_TYPE_CBV, 0));
 					newDrawContext->SetShaderParameter(1, D3DShaderParameter(cameraBuffer->GetGPUVirtualAddress(), D3D12_ROOT_PARAMETER_TYPE_CBV, 1));
 					newDrawContext->SetShaderParameter(2, D3DShaderParameter(lightBuffer->GetGPUVirtualAddress(), D3D12_ROOT_PARAMETER_TYPE_CBV, 2));
 
-					drawCommandList.push_back(newDrawContext);
 				}
+				drawCommandList.push_back(newDrawContext);
 
 			}
 		}
@@ -1316,6 +1355,12 @@ bool D3DRenderModule::initializeSkyBox() {
 	GraphicPSO* pso = mPsos["SkyBox"].get();
 
 	pso->LazyBlendDepthRasterizeDefault();
+	
+	D3D12_DEPTH_STENCIL_DESC dsdesc = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	dsdesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+
+	pso->SetDepthStencilState(dsdesc);
+
 
 	pso->SetInputElementDesc(layout);
 	pso->SetDepthStencilViewFomat(mDepthBufferFormat);
@@ -1336,7 +1381,7 @@ bool D3DRenderModule::initializeSkyBox() {
 		return false;
 	}
 
-	Mesh box = std::move(GeometryGenerator::generateCube(false));
+	Mesh box = std::move(GeometryGenerator::generateCube(false,1.f));
 	SkyBoxBuffer.box = mResourceManager.uploadStaticBuffer(box.vertexList, D3D12_RESOURCE_STATE_COMMON);
 	if (SkyBoxBuffer.box == UUID::invalid) {
 		Log("d3d12 ERROR: fail to create sky box pipeline,fail to upload box buffer data\n");
@@ -1412,4 +1457,255 @@ void D3DRenderModule::drawSkyBox() {
 	mCmdList->IASetVertexBuffers(0, 1, &SkyBoxBuffer.boxvbv);
 	
 	mCmdList->DrawInstanced(36 , 1, 0, 0);
+}
+
+bool D3DRenderModule::parseShader(Shader* shader) {
+	mPsos[shader->name] = std::make_unique<GraphicPSO>();
+	GraphicPSO* pso = mPsos[shader->name].get();
+
+	if (shader->content.GetShaderLanguage() != SHADER_LANGUAGE_HLSL) {
+		Log("d3d 12 : invaild shader language the d3d12 api only accepts hlsl as shader language\n");
+		mPsos.erase(shader->name);
+		return false;
+	}
+
+	D3D12_BLEND_DESC blendDesc = {};
+	if (!shader->BlendEnable) {
+		blendDesc = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	}
+	else {
+		blendDesc.AlphaToCoverageEnable = FALSE;
+		blendDesc.IndependentBlendEnable = FALSE;
+
+		D3D12_RENDER_TARGET_BLEND_DESC rtblendDesc = {};
+		rtblendDesc.BlendEnable = TRUE;
+		rtblendDesc.BlendOp = (D3D12_BLEND_OP)shader->BlendDesc.blendOp;
+		rtblendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
+		rtblendDesc.SrcBlend = (D3D12_BLEND)shader->BlendDesc.blendSrc;
+		rtblendDesc.DestBlend = (D3D12_BLEND)shader->BlendDesc.blendDest;
+		rtblendDesc.SrcBlendAlpha = (D3D12_BLEND)shader->BlendDesc.blendAlphaSrc;
+		rtblendDesc.DestBlendAlpha = (D3D12_BLEND)shader->BlendDesc.blendAlphaDest;
+		rtblendDesc.BlendOpAlpha = (D3D12_BLEND_OP)shader->BlendDesc.blendAlphaOp;
+
+
+		rtblendDesc.LogicOpEnable = FALSE;
+		rtblendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
+
+		for (int i = 0; i != 8; i++) {
+			blendDesc.RenderTarget[i] = rtblendDesc;
+		}
+	}
+	pso->SetBlendState(blendDesc);
+
+	D3D12_DEPTH_STENCIL_DESC depthStencilDesc;
+	depthStencilDesc.DepthEnable = shader->DepthEnable;
+	depthStencilDesc.DepthFunc = (D3D12_COMPARISON_FUNC)shader->DepthStencilDesc.depthFunc;
+	depthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	depthStencilDesc.StencilEnable = shader->StencilEnable;
+	
+	depthStencilDesc.StencilReadMask = 0xff;
+	depthStencilDesc.StencilWriteMask = 0xff;
+
+	D3D12_DEPTH_STENCILOP_DESC depthStencilOp;
+	depthStencilOp.StencilDepthFailOp = (D3D12_STENCIL_OP)shader->DepthStencilDesc.stencilDepthFail;
+	depthStencilOp.StencilFailOp = (D3D12_STENCIL_OP)shader->DepthStencilDesc.stencilFail;
+	depthStencilOp.StencilFunc = (D3D12_COMPARISON_FUNC)shader->DepthStencilDesc.stencilFunc;
+	depthStencilOp.StencilPassOp = (D3D12_STENCIL_OP)shader->DepthStencilDesc.stencilPassOp;
+
+	depthStencilDesc.FrontFace = depthStencilOp;
+	depthStencilDesc.BackFace = depthStencilOp;
+
+	pso->SetDepthStencilState(depthStencilDesc);
+
+	pso->SetDepthStencilViewFomat(this->mDepthBufferFormat);
+	
+
+	CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+
+	D3D12_RASTERIZER_DESC rasterizerDesc;
+	rasterizerDesc.CullMode = (D3D12_CULL_MODE)shader->RasterizerState.cullMode;
+
+	rasterizerDesc.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
+	rasterizerDesc.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
+	rasterizerDesc.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
+
+	rasterizerDesc.DepthClipEnable = TRUE;
+	rasterizerDesc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
+
+	rasterizerDesc.FillMode = (D3D12_FILL_MODE)shader->RasterizerState.fillMode;
+	rasterizerDesc.ForcedSampleCount = 0;
+
+	rasterizerDesc.MultisampleEnable = FALSE;
+	rasterizerDesc.AntialiasedLineEnable = FALSE;
+
+	rasterizerDesc.FrontCounterClockwise = FALSE;
+
+	pso->SetRasterizerState(rasterizerDesc);
+	pso->SetNodeMask(0);
+	pso->SetSampleDesc(1, 0);
+	pso->SetSampleMask(0);
+
+	pso->SetPrimitiveTopologyType((D3D12_PRIMITIVE_TOPOLOGY_TYPE)shader->topologyType);
+
+	uint32_t oclOffset = shader->lightEnabled ? 3 : 2;//if the shader need light data,the offset is 3 otherwise there are only two slots
+
+	uint32_t bufferNum = shader->shaderBuffers.size() + oclOffset;
+	RootSignature rootSig(bufferNum, 0);//currently we don't support sampling textures
+	rootSig[0].initAsConstantBuffer(0, 0);
+	rootSig[1].initAsConstantBuffer(1, 0);
+	if (shader->lightEnabled) rootSig[2].initAsConstantBuffer(2, 0);
+
+	for (uint32_t i = 0; i != shader->shaderBuffers.size(); i++) {
+		if (shader->shaderBuffers[i].type == SHADER_BUFFER_TYPE_CONSTANT) {
+			rootSig[i].initAsConstantBuffer(shader->shaderBuffers[i].regID, 0);
+		}
+	}
+
+	if (!rootSig.EndEditingAndCreate(mDevice.Get())) {
+		Log("d3d12 : fail to parse shader %s\n", shader->name.c_str());
+		mPsos.erase(shader->name);
+		return false;
+	}
+
+	pso->SetRootSignature(&rootSig);
+
+	InputLayout layout = {
+		{"TEXCOORD",0,DXGI_FORMAT_R32G32_FLOAT,0,0,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
+		{"TANGENT",0,DXGI_FORMAT_R32G32B32_FLOAT,0,8,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
+		{"NORMAL",0,DXGI_FORMAT_R32G32B32_FLOAT,0,20,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
+		{"POSITION",0,DXGI_FORMAT_R32G32B32_FLOAT,0,32,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0},
+		{"COLOR",0,DXGI_FORMAT_R32G32B32A32_FLOAT,0,44,D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0}
+	};
+
+	pso->SetInputElementDesc(layout);
+
+	char* shaderData;
+	size_t shaderSize;
+
+	if (shader->content.GetShaderContent(SHADER_ENTRY_TYPE_VS, &shaderData, &shaderSize)) {
+		ComPtr<ID3DBlob> byteCode = mShaderLoader.CompileFormMemory(shaderData,shaderSize,"VS",SHADER_TYPE::VS);
+		if (byteCode == nullptr) {
+			Log("d3d12 : fail to parse shader %s\n",shader->name.c_str());
+			mPsos.erase(shader->name);
+			return false;
+		}
+
+		pso->SetVertexShader(byteCode->GetBufferPointer(), byteCode->GetBufferSize());
+	}
+
+	if (shader->content.GetShaderContent(SHADER_ENTRY_TYPE_PS, &shaderData, &shaderSize)) {
+		ComPtr<ID3DBlob> byteCode = mShaderLoader.CompileFormMemory(shaderData, shaderSize, "PS", SHADER_TYPE::PS);
+		if (byteCode == nullptr) {
+			Log("d3d12 : fail to parse shader %s\n", shader->name.c_str());
+			mPsos.erase(shader->name);
+			return false;
+		}
+
+		pso->SetPixelShader(byteCode->GetBufferPointer(), byteCode->GetBufferSize());
+	}
+
+	pso->SetFlag(D3D12_PIPELINE_STATE_FLAG_NONE);
+	pso->SetRenderTargetFormat(mBackBufferFormat);
+	
+	if (!pso->Create(mDevice.Get())) {
+		Log("d3d12 : fail to create pso for shader %s\n",shader->name.c_str());
+		mPsos.erase(shader->name);
+		return false;
+	}
+
+	mRootSignatures[shader->name] = rootSig.GetRootSignature();
+	return true;
+}
+
+void D3DRenderModule::resize() {
+	if (!isInitialized) return;
+
+	if (mFence->GetCompletedValue() < fenceVal) {
+		if (FAILED(mFence->SetEventOnCompletion(fenceVal, GpuStallEvent))) {
+			Log("d3d12 error : fail to set event on completion system will quit\n");
+			dynamic_cast<WindowsApplication*>(app)->Quit();
+			return;
+		}
+
+		WaitForSingleObject(GpuStallEvent, INFINITE);
+	}
+
+
+	for (int i = 0; i != mBackBufferNum;i++) {
+		mBackBuffers[i] = nullptr;
+	}
+
+	WindowsApplication* winApp = dynamic_cast<WindowsApplication*>(app);
+	Config windowConfig = app->getSysConfig();
+
+	HRESULT hr = mSwapChain->ResizeBuffers(mBackBufferNum,
+		windowConfig.width,windowConfig.height,
+		mBackBufferFormat,DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH);
+	if (FAILED(hr)) {
+		Log("fail to resize the swapchains\n");
+		app->Quit();
+		return;
+	}
+
+	mCurrentFrameIndex = mSwapChain->GetCurrentBackBufferIndex();
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
+
+	for (int i = 0; i != mBackBufferNum; i++) {
+		mSwapChain->GetBuffer(i, IID_PPV_ARGS(&mBackBuffers[i]));
+
+		mDevice->CreateRenderTargetView(mBackBuffers[i].Get(), nullptr, rtvHandle);
+		rtvHandle.Offset(1, rtvDescriptorIncreament);
+	}
+
+	Config sysconfig = winApp->getSysConfig();
+	width = sysconfig.width;
+	height = sysconfig.height;
+
+	D3D12_RESOURCE_DESC depthDesc;
+	depthDesc.Format = mDepthBufferFormat;
+	depthDesc.Alignment = 0;
+	depthDesc.DepthOrArraySize = 1;
+	depthDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	depthDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+	depthDesc.Height = height;
+	depthDesc.Width = width;
+	depthDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	depthDesc.MipLevels = 1;
+	depthDesc.SampleDesc.Count = 1;
+	depthDesc.SampleDesc.Quality = 0;
+
+	mDepthStencilBuffer = nullptr;
+	//We assume that the default depth stencil compare function is less so the 
+	//default value of the depth buffer is 1.0f
+	D3D12_CLEAR_VALUE cValue = {};
+	cValue.Format = mDepthBufferFormat;
+	cValue.DepthStencil.Depth = 1.f;
+	cValue.DepthStencil.Stencil = 0;
+
+	hr = mDevice->CreateCommittedResource(&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE, &depthDesc,
+		D3D12_RESOURCE_STATE_DEPTH_WRITE,
+		&cValue, IID_PPV_ARGS(&mDepthStencilBuffer));
+
+	if (FAILED(hr)) {
+		Log("fail to create new depth buffer for resized buffers\n");
+		app->Quit();
+		return;
+	}
+	
+	mDevice->CreateDepthStencilView(mDepthStencilBuffer.Get(),nullptr,
+		dsvHeap->GetCPUDescriptorHandleForHeapStart());
+
+	viewPort.Width = width;
+	viewPort.Height = height;
+	viewPort.TopLeftX = 0;
+	viewPort.TopLeftY = 0;
+	viewPort.MinDepth = 0;
+	viewPort.MaxDepth = 1.0f;
+
+	sissorRect.bottom = height;
+	sissorRect.top = 0;
+	sissorRect.left = 0;
+	sissorRect.right = width;
 }

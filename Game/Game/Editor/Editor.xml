@@ -1,0 +1,65 @@
+<!--The editor GUI describe file should be start with editor-->
+<editor >
+    <window name = "main bar holder" enabled = "true" position = "2000,2000">
+        <menubar type = "main">
+            <menu name = "Project">
+                <menuitem name = "Open" callback = "OpenFile"></menuitem>
+                <menuitem name = "Save" callback = "Save"></menuitem>
+                <menu name = "New">
+                    <menuitem name = "2D" callback = "New2DScene"></menuitem>
+                    <menuitem name = "3D" callback = "New3DScene"></menuitem>
+                </menu>
+                <menuitem name = "Setting" callback = "ShowSettingWindow"></menuitem>
+                <menuitem name = "Exit" callback = "Exit"></menuitem>
+            </menu>
+            <menu name = "Windows">
+                <menuitem name = "Scene" callback = "ShowSceneWindow"></menuitem>
+                <menuitem name = "Assert" callback = "ShowAssertWindow"></menuitem>
+                <menuitem name = "Inspect" callback = "ShowInspectWindow"></menuitem>
+            </menu>
+            <menu name = "Operation">
+                <menuitem name = "UnDo" shortcut = "CTRL+Z" callback = "UnDo"></menuitem>
+                <menuitem name = "Copy" shortcut = "CTRL+C" callback = "Copy"></menuitem>
+                <menuitem name = "Paste" shortcut = "CTRL+V" callback = "Paste"></menuitem>
+            </menu>
+            <menu name = "Run">
+                <menuitem name = "Run" shortcut = "F5" callback = "Run"></menuitem>
+            </menu>
+            <menu name = "About">
+                <menuitem name = "About Project" callback = "AboutProject"></menuitem>
+                <menuitem name = "About System" callback = "AboutSystem"></menuitem>
+                <menuitem name = "Help" callback = "ShowHelp"></menuitem>
+            </menu>
+        </menubar>
+    </window>
+    <window name = "welcome" enabled = "true" size = "-5,317" position = "-436,268" type = "CanBeClosed">
+        <text>*Welcome to homo engine,this is a game engine based on DX12.</text>
+        <text>The project page on github is</text>
+        <text color = "green"> https://github.com/137900114/Homo-Engine</text>
+        <text>*To load a 3d model file ,choose 'Project/Open' to open </text>
+        <text>a 3d scene file in the system</text>
+    </window>
+    <window name = "Scene" enabled = "false" position = "3,20" size = "267,625"  type = "CanBeClosed">
+        <header name = "Scene Objects">
+            <!--the elements in block labels will be created dynamicly by some callback functions-->
+            <block name = "SceneObjectTable" update = "SceneObjectTableUpdate"></block>
+        </header>
+    </window>
+
+    <window name = "Inspect" enabled = "false" type = "CanBeClosed" position = "-436,20" size = "-1,900">
+        <text update = "NameFieldUpdate">Name:</text>
+        <header name = "Transform">
+            <!--the vectorX label interact with system by two functions update and readback-->
+            <!--update function is used to write the value from system to GUI module-->
+            <!--readback function is used to read the vector value from GUI to the system-->
+            <vector3 name = "Position" update = "PositionFieldUpdate" readback = "PositionFieldReadback"></vector3>
+            <vector3 name = "Rotation" update = "RotationFieldUpdate" readback = "RotationFieldReadback"></vector3>
+            <vector3 name = "Scale" update = "ScaleFieldUpdate"    readback = "ScaleFieldReadback"></vector3>
+        </header>
+        <header name = "Components">
+            <text>currently we don't support viewing the object's Components</text>
+        </header>
+    </window>
+
+</editor>
+

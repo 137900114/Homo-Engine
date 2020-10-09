@@ -8,13 +8,14 @@
 #include "tinyxml2.h"
 #include "MeshRenderer.h"
 #include <sstream>
+#include <queue>
 using namespace tinyxml2;
 
 namespace Game {
 	extern GraphicModule* gGraphic;
-	extern FileLoader* gFileLoader;
+	extern FileLoader gFileLoader;
 
-	extern MemoryModule* gMemory;
+	extern MemoryModule gMemory;
 	extern Timer gTimer;
 
 	SceneLoader gSceneLoader;
@@ -22,11 +23,12 @@ namespace Game {
 
 Game::Scene::Scene(const char* name):
 name(name){
-	root = gMemory->New<SceneRootNode>("root",this);
+	root = gMemory.New<SceneRootNode>("root",this);
+	skybox = nullptr;
 }
 
 Game::Scene::~Scene() {
-	gMemory->Delete(root);
+	gMemory.Delete(root);
 
 	for (auto& iter : meshs) {
 		iter.second.vertexList.release();
@@ -53,14 +55,14 @@ Game::Scene* Game::SceneLoader::loadScene(const char* filename,bool useIndex) {
 	}
 	
 	if (file_extension == "obj") {
-		if (!gFileLoader->FileReadAndClose(filename, filedata,LOAD_FILE_MODE::READ_CHARACTERS)) {
+		if (!gFileLoader.FileReadAndClose(filename, filedata,LOAD_FILE_MODE::READ_CHARACTERS)) {
 			Log("SceneLoader : fail to open file %s\n",filename);
 			return nullptr;
 		}
 		_newScene = ObjPraser(filedata,file_name.c_str(),useIndex);
 	}
 	else if (file_extension == "dae") {
-		if (!gFileLoader->FileReadAndClose(filename,filedata,LOAD_FILE_MODE::READ_CHARACTERS)) {
+		if (!gFileLoader.FileReadAndClose(filename,filedata,LOAD_FILE_MODE::READ_CHARACTERS)) {
 			Log("SceneLoader : fail to open file %s\n",filename);
 			return nullptr;
 		}
@@ -100,7 +102,7 @@ void Game::SceneLoader::destroyScene(const char* scene_name) {
 	//maybe some data have uploaded to gpu in graphic module,we need to destroy them!
 	gGraphic->releaseScene(*iter->second);
 
-	gMemory->Delete(iter->second);
+	gMemory.Delete(iter->second);
 }
 
 
@@ -127,7 +129,7 @@ Game::Scene* Game::SceneLoader::ObjPraser(Game::Buffer& buf,const char* name,boo
 	std::vector<FaceType> face;
 	Mesh* currentMesh = nullptr;
 	size_t vertexNum = 0;
-	Scene* scene = gMemory->New<Scene>(name);
+	Scene* scene = gMemory.New<Scene>(name);
 	int line_counter = 0;
 	while (std::getline(strstr, line)) {
 		line_counter++;
@@ -359,7 +361,7 @@ Game::Scene* Game::SceneLoader::DaePraser(Game::Buffer& buf, const char* name, b
 	}
 
 	DaeSceneParser parser;
-	Scene* target = gMemory->New<Scene>(name);
+	Scene* target = gMemory.New<Scene>(name);
 	parser.target = target;
 	parser.collada = collada;
 
@@ -384,7 +386,7 @@ Game::Scene* Game::SceneLoader::DaePraser(Game::Buffer& buf, const char* name, b
 		!parser.ParseScene(&error_str)) {
 
 		Log("fail to parse dea file,reason %s", error_str);
-		gMemory->Delete(target);
+		gMemory.Delete(target);
 		return nullptr;
 	}
 
@@ -696,19 +698,20 @@ bool parse_scene_element(Game::SceneRootNode* root,XMLElement* scene_nodes, Game
 		transfrom_array[i] = std::stof(transfrom_str_array[i]);
 	}
 
-	Game::SceneTransform Transfrom;
-	Transfrom.World = Game::Mat4x4(transfrom_array);
+
+	
+	Game::Mat4x4 world = Game::Mat4x4(transfrom_array);
 	if (!UpIsY) {
 		Game::Mat4x4 transCoord = Game::Mat4x4(-1.,0.,0.,0.,
 												0.,0.,1.,0.,
 												0.,1.,0.,0.,
 												0.,0.,0.,1.);
 
-		Transfrom.World = mul(transCoord,mul(Transfrom.World,transCoord));
+		world = mul(transCoord,mul(world,transCoord));
 	}
 
-
-	Game::UnpackTransfrom(Transfrom.World, Transfrom.Position, Transfrom.Rotation, Transfrom.Scale);
+	Game::SceneTransform transform;
+	transform.UnpackTransform(world,root->transform.GetWorld());
 	Game::SceneRootNode* curr_node = nullptr;
 
 	XMLElement* ele = nullptr;
@@ -724,14 +727,14 @@ bool parse_scene_element(Game::SceneRootNode* root,XMLElement* scene_nodes, Game
 			return false;
 		}
 
-		Game::SceneObject* object = Game::gMemory->New<Game::SceneObject>(name, target);
-		object->transform = Transfrom;
+		Game::SceneObject* object = Game::gMemory.New<Game::SceneObject>(name, target);
+		object->transform = transform;
 		object->geoMesh = &query_mesh->second;
 		target->root->childs.push_back(object);
 		curr_node = object;
 
 
-		Game::MeshRenderer* renderer = Game::gMemory->New<Game::MeshRenderer>(object);
+		Game::MeshRenderer* renderer = Game::gMemory.New<Game::MeshRenderer>(object);
 		object->components.push_back(renderer);
 
 	}
@@ -748,8 +751,8 @@ bool parse_scene_element(Game::SceneRootNode* root,XMLElement* scene_nodes, Game
 			return false;
 		}
 
-		Game::SceneCamera* object = Game::gMemory->New<Game::SceneCamera>(name, target, query_camera->second);
-		object->transform = Transfrom;
+		Game::SceneCamera* object = Game::gMemory.New<Game::SceneCamera>(name, target, query_camera->second);
+		object->transform = transform;
 
 		target->root->childs.push_back(object);
 		if (!target->mainCamera) {
@@ -771,11 +774,8 @@ bool parse_scene_element(Game::SceneRootNode* root,XMLElement* scene_nodes, Game
 		}
 
 		query_light->second.lightIntensity = Game::Vector3(1.,1.,1.);
-		Game::SceneLight* object = Game::gMemory->New<Game::SceneLight>(name, target, query_light->second);
-		object->transform = Transfrom;
-		if (object->light->lightType == Game::LIGHT_TYPE_POINT) {
-			object->light->lightVec = object->transform.Position;
-		}
+		Game::SceneLight* object = Game::gMemory.New<Game::SceneLight>(name, target, query_light->second);
+		object->transform = transform;
 
 		target->root->childs.push_back(object);
 		if (!target->mainLight) {
@@ -784,8 +784,8 @@ bool parse_scene_element(Game::SceneRootNode* root,XMLElement* scene_nodes, Game
 		curr_node = object;
 	}
 	else {
-		Game::SceneRootNode* object = Game::gMemory->New<Game::SceneRootNode>(name,target);
-		object->transform = Transfrom;
+		Game::SceneRootNode* object = Game::gMemory.New<Game::SceneRootNode>(name,target);
+		object->transform = transform;
 
 		target->root->childs.push_back(object);
 		curr_node = object;
@@ -883,6 +883,7 @@ bool Game::SceneManager::getScene(const char* scenename,bool distroy_last_scene)
 		go_through_all_nodes(currentScene->root,&SceneRootNode::finalize);
 		gSceneLoader.destroyScene(currentScene->name.c_str());
 	}
+	
 	currentScene = gSceneLoader.getScene(scenename);
 	return currentScene != nullptr;
 }
@@ -893,10 +894,51 @@ bool Game::SceneManager::loadScene(const char* filename,bool switch_to_current_s
 		gSceneLoader.destroyScene(currentScene->name.c_str());
 	}
 	Scene* newScene = gSceneLoader.loadScene(filename);
-	if (switch_to_current_scene) {
+	if (switch_to_current_scene && newScene != nullptr) {
 		currentScene = newScene;
 		go_through_all_nodes(currentScene->root,&SceneRootNode::initialize);
 	}
 
 	return currentScene != nullptr;
+}
+
+Game::SceneRootNode* Game::SceneManager::QueryNode(std::string name,bool depth_first) {
+	if (depth_first) {
+		return dfs_find_node(name, currentScene->root);
+	}
+	else {
+		return bfs_find_node(name);
+	}
+}
+
+Game::SceneRootNode* Game::SceneManager::dfs_find_node(const std::string& name,Game::SceneRootNode* root) {
+	for (auto& item : root->childs) {
+		Game::SceneRootNode* node =	dfs_find_node(name, item);
+		if (node != nullptr) return node;
+	}
+
+	if (root->name.compare(name) == 0) {
+		return root;
+	}
+
+	return nullptr;
+}
+
+Game::SceneRootNode* Game::SceneManager::bfs_find_node(const std::string& name) {
+	std::queue<Game::SceneRootNode*> next;
+	next.push(currentScene->root);
+	
+	while (!next.empty()) {
+		Game::SceneRootNode* node = next.front();
+		next.pop();
+		if (node->name.compare(name) == 0) {
+			return node;
+		}
+
+		for (auto& item : node->childs) {
+			next.push(item);
+		}
+	}
+	
+	return nullptr;
 }

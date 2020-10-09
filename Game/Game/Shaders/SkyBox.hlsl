@@ -37,7 +37,6 @@ VertexOut VS(StandardVertexIn input){
     float3 worldPos = input.Position + cameraPosition;
     //output.Position = float4(world,1.)
     output.Position = mul(viewProj,float4(worldPos,1.f)).xyzz;
-    output.Position.z -= 1e-4f;
 
     output.relaPos = -input.Position;
 

@@ -10,7 +10,7 @@
 #include <memory>
 #include "Matrix.h"
 #include "d3dCommon.h"
-#include "ShaderLoader.h"
+#include "HLSLShaderLoader.h"
 #include "D3DResourceManager.h"
 #include "D3DDescriptorHandleAllocator.h"
 #include "D3DDrawContext.h"
@@ -25,7 +25,7 @@
 
 namespace Game {
 	class D3DRenderModule : public GraphicModule {
-
+		friend class EditorGUIModule;
 		using InputLayout = std::vector<D3D12_INPUT_ELEMENT_DESC>;
 	public:
 
@@ -53,6 +53,10 @@ namespace Game {
 		virtual void drawSingleScene(Scene* scene) override;
 #endif
 		virtual void parseDrawCall(DrawCall* dc,int num) override;
+		virtual bool parseShader(Shader* shader);
+
+		virtual void resize() override;
+
 	private:
 		void create2DImageDrawCall();
 
@@ -74,6 +78,8 @@ namespace Game {
 		void initializeSingleMeshData();
 #endif
 
+		void FlushCommandQueue();
+
 		int width;
 		int height;
 
@@ -81,6 +87,8 @@ namespace Game {
 		ComPtr<IDXGIFactory4> mDxgiFactory;
 		ComPtr<IDXGISwapChain3> mSwapChain;
 		ComPtr<ID3D12Device> mDevice;
+
+		HANDLE GpuStallEvent = nullptr;
 
 		static const DXGI_FORMAT mBackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 		static const DXGI_FORMAT mDepthBufferFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
@@ -119,7 +127,7 @@ namespace Game {
 		std::unordered_map<std::string, ComPtr<ID3DBlob>> mShaderByteCodes;
 		std::unordered_map<std::string, ComPtr<ID3D12RootSignature>> mRootSignatures;
 		
-		ShaderLoader mShaderLoader;
+		HLSLShaderLoader mShaderLoader;
 		D3DResourceManager mResourceManager;
 		D3DDescriptorHandleAllocator mDescriptorAllocator;
 
@@ -176,6 +184,6 @@ namespace Game {
 #endif
 
 		std::vector<D3DDrawContext*> drawCommandList;
-
+		bool isInitialized = false;
 	};
 }

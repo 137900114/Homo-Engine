@@ -4,7 +4,7 @@
 //a simple reference count based garbage collecting system 
 namespace Game{
 
-	extern MemoryModule* gMemory;
+	extern MemoryModule gMemory;
 	//currently we use normal int 32 as Atom32UInt
 	//because our program only has one thread
 	using Atom32Int = int32_t;
@@ -39,7 +39,7 @@ namespace Game{
 	public:
 		CountPtr(T* other) {
 			if (ref && ref->add_reference(-1) <= 0) {
-				gMemory->Delete(ref);
+				gMemory.Delete(ref);
 			}
 			ref = other;
 			other->add_reference(1);
@@ -47,7 +47,7 @@ namespace Game{
 		CountPtr():ref(nullptr) {}
 		CountPtr(const CountPtr& other) {
 			if (ref && ref->add_reference(-1) <= 0) {
-				gMemory->Delete(ref);
+				gMemory.Delete(ref);
 			}
 			ref = const_cast<T*>(other.ref);
 			ref->add_reference(1);
@@ -58,14 +58,14 @@ namespace Game{
 		
 		CountPtr& operator=(T* other) {
 			if (ref && ref->add_reference(-1) <= 0) {
-				gMemory->Delete(ref);
+				gMemory.Delete(ref);
 			}
 			ref = other;
 			other->add_reference(1);
 		}
 		CountPtr& operator=(const CountPtr& other) {
 			if (ref && ref->add_reference(-1) <= 0) {
-				gMemory->Delete(ref);
+				gMemory.Delete(ref);
 			}
 			ref = const_cast<T*>(other);
 			ref->add_reference(1);
@@ -76,7 +76,7 @@ namespace Game{
 		
 		~CountPtr() {
 			if (ref && ref->add_reference(-1) <= 0) {
-				gMemory->Delete(ref);
+				gMemory.Delete(ref);
 			}
 		}
 
@@ -89,6 +89,6 @@ namespace Game{
 
 	template<typename T,typename ...Args>
 	CountPtr<T> make_cptr(Args... args) {
-		return std::move( CountPtr<T>(gMemory->New(args...)));
+		return std::move( CountPtr<T>(gMemory.New(args...)));
 	}
 }

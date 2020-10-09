@@ -34,7 +34,7 @@ namespace Game{
 		static MeshDrawCallMaker* drawCallMaker;
 		SceneObject* object;
 		Material* material;
-		CBuffer TransformBuffer;
+		CBuffer ConstantBuffer;
 		ShaderObjectBuffer* ObjectBufferPtr;
 		uint32_t drawCallID;
 	};

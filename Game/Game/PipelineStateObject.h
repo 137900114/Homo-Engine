@@ -30,7 +30,9 @@ namespace Game {
 		void SetRenderTargetFormat(DXGI_FORMAT format) { SetRenderTargetFormat(1, &format); }
 		void SetRenderTargetFormat(UINT num, const DXGI_FORMAT* formats);
 		
-
+		inline void SetRootSignature(ID3D12RootSignature* rootSig) {
+			m_PSODesc.pRootSignature = rootSig;
+		}
 		void SetRootSignature(RootSignature* rootSig);
 
 		void SetRasterizerState(D3D12_RASTERIZER_DESC state) { m_PSODesc.RasterizerState = state; }

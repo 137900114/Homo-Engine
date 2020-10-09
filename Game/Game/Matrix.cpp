@@ -659,4 +659,10 @@ namespace Game {
 	Mat4x4 PackTransfrom(Vector3 position,Vector3 rotation,Vector3 scaling) {
 		return mul(MatrixPosition(position),mul(MatrixRotation(rotation),MatrixScale(scaling)));
 	}
+
+	Mat3x3::Mat3x3(const Mat4x4& mat) {
+		memcpy(a, mat.a, sizeof(float) * 3);
+		memcpy(a + 3, mat.a + 4, sizeof(float) * 3);
+		memcpy(a + 6, mat.a + 8, sizeof(float) * 3);
+	}
 }

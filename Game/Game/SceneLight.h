@@ -26,10 +26,10 @@ namespace Game {
 
 		CBuffer* GetLightCBuffer() { 
 			if (light->lightType == LIGHT_TYPE_POINT) {
-				light->lightVec = transform.Position;
+				light->lightVec = transform.GetWorldPosition();
 			}
 			else if (light->lightType == LIGHT_TYPE_DIRECTIONAL) {
-				light->lightVec = Vector3(mul(MatrixRotation(transform.Rotation), Vector4(1., 0., 0.,0.)));
+				light->lightVec = normalize(mul(transform.GetWorld(), Vector4(1., 0., 0., 0.) ) );
 			}
 			lightCBuffer.updated = true;
 			return &lightCBuffer;

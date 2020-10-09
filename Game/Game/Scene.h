@@ -38,6 +38,8 @@ namespace Game {
 		Scene(const char* name);
 		
 		~Scene();
+
+		Texture* skybox;
 	};
 
 	class SceneLoader {
@@ -73,9 +75,16 @@ namespace Game {
 			}
 			return nullptr;
 		}
+
+		Scene* GetCurrentScene() { return currentScene; }
+
+		SceneRootNode* QueryNode(std::string name,bool depth_first = true);
 	private:
 		void go_through_all_nodes(SceneRootNode* node,float deltaTime);
 		void go_through_all_nodes(SceneRootNode* node,void (Game::SceneRootNode::*)());
+		SceneRootNode* dfs_find_node(const std::string& name,SceneRootNode* node);
+		SceneRootNode* bfs_find_node(const std::string& name);
+
 
 		Scene* currentScene;
 	};

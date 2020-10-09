@@ -53,6 +53,13 @@ namespace Game{
 		Mesh(const Mesh& m) = delete;
 		const Mesh& operator=(const Mesh& m) = delete;
 
+		inline Vertex* resizeVertexList() { vertexList.resize(vertexNum * vertexSize); return reinterpret_cast<Vertex*>(vertexList.data); }
+		inline void* resizeIndexList() { indexList.resize(indexNum * indexSize); return indexList.data; }
+
+		inline Vertex* getVertexData() { return reinterpret_cast<Vertex*>(vertexList.data); }
+		inline uint16_t* getIndex16() { return reinterpret_cast<uint16_t*>(indexList.data); }
+		inline uint32_t* getIndex32() { return reinterpret_cast<uint32_t*>(indexList.data); }
+
 	private:
 		void moveMesh(Mesh&& mesh) {
 			vertexNum = mesh.vertexNum;

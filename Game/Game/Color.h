@@ -12,5 +12,9 @@ namespace Game {
 		extern Color Yellow ;
 		extern Color Purple ;
 		extern Color Orange ;
+
+
+		bool GetColorByName(const char* name,Color& target);
+		bool PraseColor(const char* colorStr,Color& target);
 	};
 }

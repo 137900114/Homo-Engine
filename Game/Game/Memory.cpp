@@ -93,6 +93,7 @@ size_t Game::MemoryModule::get_block_index(size_t size) {
 size_t Game::MemoryModule::get_block_size(size_t index) { return blockSize[index]; }
 
 void* Game::MemoryModule::allocate(size_t size) {
+	//printf("allocate %d\n");
 	if (size == 0 || isFinalized) return nullptr;
 	if (size <= max_block_size) {
 		size_t index = get_block_index(size);
@@ -105,6 +106,7 @@ void* Game::MemoryModule::allocate(size_t size) {
 }
 
 void Game::MemoryModule::deallocate(size_t size, void* mem) {
+	//printf("deallocate %d\n");
 	if (isFinalized) return;
 	if (size <= max_block_size) {
 		size_t index = get_block_index(size);

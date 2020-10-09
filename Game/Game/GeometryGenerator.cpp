@@ -1,7 +1,9 @@
 #include "GeometryGenerator.h"
 #include "Math.h"
 
-Game::Mesh Game::GeometryGenerator::generateCube(bool anticlockwise,Vector3 scaling) {
+using namespace Game;
+
+Mesh GeometryGenerator::generateCube(bool anticlockwise,Vector3 scaling) {
 	Mesh result;
 	//for cubes we don't use index list,or we will get strange normal
 	result.useIndexList = false;
@@ -92,6 +94,82 @@ Game::Mesh Game::GeometryGenerator::generateCube(bool anticlockwise,Vector3 scal
 	vert[35] = { Vector2(),Vector3(),Normals[5],VPos[5] ,Vector4() };
 
 	return std::move(result);
+}
+
+Mesh GeometryGenerator::generatePlane(uint32_t rownum,uint32_t columnum, GeometryPlaneAxis axis,Game::Vector2 halfSize, bool anticlock) {
+
+	uint32_t vertNum = (rownum + 1)* (columnum + 1);
+	uint32_t indexNum = rownum * columnum * 6;
+
+	Mesh result;
+
+	result.useIndexList = true;
+	result.indexType = Mesh::I16;
+	result.indexNum = indexNum;
+	result.resizeIndexList();
+
+	result.vertexNum = vertNum;
+	Mesh::Vertex* vert = result.resizeVertexList();
+	uint16_t* index = result.getIndex16();
+
+
+	float xstep = halfSize.x * 2. / columnum;
+	float ystep = halfSize.y * 2. / rownum;
+
+	Vector3 start;
+
+	if (axis == Z_AXIS) {
+		start = Vector3(-halfSize.x, -halfSize.y, 0.);
+	} else if(axis == Y_AXIS){
+		start = Vector3(-halfSize.x, 0, -halfSize.y);
+	}
+	else if (axis == X_AXIS) {
+		start = Vector3(0., -halfSize.x, -halfSize.y);
+	}
+
+	for (int x = 0; x <= columnum; x++) {
+		for (int y = 0; y <= rownum; y++) {
+			Mesh::Vertex* currentVert = vert + x + y * (columnum + 1);
+			if (axis == Z_AXIS) {
+				*currentVert = { Vector2(),Vector3(),Vector3(0,0,1),start + Vector3(x * xstep,y * ystep,0.),Vector4() };
+			}else if (axis == Y_AXIS) {
+				*currentVert = { Vector2(),Vector3(),Vector3(0,1,0),start + Vector3(x * xstep,0.,y * ystep),Vector4() };
+			}else if (axis == X_AXIS) {
+				*currentVert = { Vector2(),Vector3(),Vector3(1,0,0),start + Vector3(0.,x * xstep,y * ystep),Vector4() };
+			}
+		}
+	}
+
+	for (int x = 0; x < columnum; x++) {
+		for (int y = 0; y < columnum; y++) {
+			uint16_t lup = x + y * (columnum + 1);
+			uint16_t rup = lup + 1;
+			uint16_t ldown = lup + (columnum + 1);
+			uint16_t rdown = ldown + 1;
+
+			uint16_t* currentIndex = index + (x + y * columnum) * 6;
+
+			if (anticlock) {
+				currentIndex[0] = lup;
+				currentIndex[1] = ldown;
+				currentIndex[2] = rup;
+				currentIndex[3] = rup;
+				currentIndex[4] = ldown;
+				currentIndex[5] = rdown;
+			}
+			else {
+				currentIndex[0] = lup;
+				currentIndex[2] = ldown;
+				currentIndex[1] = rup;
+				currentIndex[3] = rup;
+				currentIndex[5] = ldown;
+				currentIndex[4] = rdown;
+			}
+		}
+	}
+	
+	return std::move(result);
+
 }
 
 #define STEP(index,bound) ((index) + 1) % (bound)

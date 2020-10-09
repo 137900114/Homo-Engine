@@ -117,9 +117,7 @@ FileLoader::FilePtr FileLoader::OpenFile(const char* filename,LOAD_FILE_MODE mod
 			}
 		}
 	}
-	else {
-		open_file(filename, mode, &file);
-	}
+	open_file(filename, mode, &file);
 
 	return file;
 }

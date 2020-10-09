@@ -32,11 +32,47 @@
     <Filter Include="Common\Memory">
       <UniqueIdentifier>{173e8b1e-ffc3-47a1-8e7e-7d89d08b94ce}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Physics">
+      <UniqueIdentifier>{dd1cceef-f571-4361-9477-ee402f297d8b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Physics\DataStructure">
+      <UniqueIdentifier>{1bc65204-ed68-4a82-827d-a75e5192b552}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Physics\Partical">
+      <UniqueIdentifier>{d05782a8-a2b8-4430-9671-99ac54cefead}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Physics\Rigidbody">
+      <UniqueIdentifier>{2a467757-6a25-4466-9bcf-157ae6fa910b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Debug">
+      <UniqueIdentifier>{53bec31d-1956-4602-a694-549282675165}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Common\Shader">
+      <UniqueIdentifier>{42b96cf9-d2da-408d-b869-bf7d0ef4ffe8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GUI">
+      <UniqueIdentifier>{884c2184-9fe8-43d7-acb9-a85c4b74a21c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThridParty\tinyxml">
+      <UniqueIdentifier>{a89d2a0c-09be-49be-b788-d3599c46d149}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThridParty\imgui">
+      <UniqueIdentifier>{86a71f66-b672-47cd-9bd6-6db182e8c351}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThridParty\imgui\win32">
+      <UniqueIdentifier>{f96c482e-8c25-4362-9ca7-76726c43c7f9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ThridParty\imgui\dx12">
+      <UniqueIdentifier>{5ed4e871-9b4a-4053-a982-6b7a6a1812ed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GUI\Editer">
+      <UniqueIdentifier>{a9a2d47a-f9b5-4940-ae44-943decd9ae44}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Common\Reflect">
+      <UniqueIdentifier>{7a0dc791-501d-4ebf-8561-bd7c6cb62375}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="IRuntimeModule.hpp">
-      <Filter>Framework</Filter>
-    </ClInclude>
     <ClInclude Include="IApplication.h">
       <Filter>Framework</Filter>
     </ClInclude>
@@ -100,9 +136,6 @@
     <ClInclude Include="D3DResourceManager.h">
       <Filter>d3d</Filter>
     </ClInclude>
-    <ClInclude Include="ShaderLoader.h">
-      <Filter>d3d</Filter>
-    </ClInclude>
     <ClInclude Include="d3dCommon.h">
       <Filter>d3d</Filter>
     </ClInclude>
@@ -121,9 +154,6 @@
     <ClInclude Include="GeometryGenerator.h">
       <Filter>Common\AssertLoader</Filter>
     </ClInclude>
-    <ClInclude Include="tinyxml2.h">
-      <Filter>ThridParty</Filter>
-    </ClInclude>
     <ClInclude Include="MathFunctions.h">
       <Filter>Common\Math</Filter>
     </ClInclude>
@@ -137,9 +167,6 @@
       <Filter>Common\Scene</Filter>
     </ClInclude>
     <ClInclude Include="SceneObject.h">
-      <Filter>Common\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="Material.h">
       <Filter>Common\Scene</Filter>
     </ClInclude>
     <ClInclude Include="SceneCamera.h">
@@ -160,9 +187,6 @@
     <ClInclude Include="DrawCall.h">
       <Filter>Common</Filter>
     </ClInclude>
-    <ClInclude Include="Shader.h">
-      <Filter>Common\Scene</Filter>
-    </ClInclude>
     <ClInclude Include="MArray.h">
       <Filter>Common\Memory</Filter>
     </ClInclude>
@@ -177,6 +201,106 @@
     </ClInclude>
     <ClInclude Include="ShaderDataStructure.h">
       <Filter>Common\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="PhysicsSimulater.h">
+      <Filter>Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="SceneTransform.h">
+      <Filter>Common\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="PhyContact.h">
+      <Filter>Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="IRuntimeModule.hpp">
+      <Filter>Framework</Filter>
+    </ClInclude>
+    <ClInclude Include="PhyDataStructure.h">
+      <Filter>Physics\DataStructure</Filter>
+    </ClInclude>
+    <ClInclude Include="PhyBounding.h">
+      <Filter>Physics\DataStructure</Filter>
+    </ClInclude>
+    <ClInclude Include="PhyCollider.h">
+      <Filter>Physics\DataStructure</Filter>
+    </ClInclude>
+    <ClInclude Include="PhyPartical.h">
+      <Filter>Physics\Partical</Filter>
+    </ClInclude>
+    <ClInclude Include="PhyParticalComponent.h">
+      <Filter>Physics\Partical</Filter>
+    </ClInclude>
+    <ClInclude Include="PFGenerator.h">
+      <Filter>Physics\Partical</Filter>
+    </ClInclude>
+    <ClInclude Include="PhyRigidBody.h">
+      <Filter>Physics\Rigidbody</Filter>
+    </ClInclude>
+    <ClInclude Include="PhyCollisionDetector.h">
+      <Filter>Physics\Rigidbody</Filter>
+    </ClInclude>
+    <ClInclude Include="DebugLayer.h">
+      <Filter>Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="Shader.h">
+      <Filter>Common\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="Material.h">
+      <Filter>Common\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="ShaderPraser.h">
+      <Filter>Common\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="HLSLShaderLoader.h">
+      <Filter>d3d</Filter>
+    </ClInclude>
+    <ClInclude Include="MaterialManager.h">
+      <Filter>Common\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="tinyxml2.h">
+      <Filter>ThridParty\tinyxml</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\imconfig.h">
+      <Filter>ThridParty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\imgui.h">
+      <Filter>ThridParty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\imgui_internal.h">
+      <Filter>ThridParty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\imgui_impl_win32.h">
+      <Filter>ThridParty\imgui\win32</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\imgui_impl_dx12.h">
+      <Filter>ThridParty\imgui\dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\imstb_rectpack.h">
+      <Filter>ThridParty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\imstb_textedit.h">
+      <Filter>ThridParty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\imstb_truetype.h">
+      <Filter>ThridParty\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="compile_config.h" />
+    <ClInclude Include="EditorElements.h">
+      <Filter>GUI\Editer</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorGUIModule.h">
+      <Filter>GUI\Editer</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorCallBacks.h">
+      <Filter>GUI\Editer</Filter>
+    </ClInclude>
+    <ClInclude Include="EditorElementPraser.h">
+      <Filter>GUI\Editer</Filter>
+    </ClInclude>
+    <ClInclude Include="Reflect_Registry.h">
+      <Filter>Common\Reflect</Filter>
+    </ClInclude>
+    <ClInclude Include="FPSCamera.h">
+      <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -232,9 +356,6 @@
     <ClCompile Include="D3DResourceManager.cpp">
       <Filter>d3d</Filter>
     </ClCompile>
-    <ClCompile Include="ShaderLoader.cpp">
-      <Filter>d3d</Filter>
-    </ClCompile>
     <ClCompile Include="D3DDescriptorHandleAllocator.cpp">
       <Filter>d3d</Filter>
     </ClCompile>
@@ -246,9 +367,6 @@
     </ClCompile>
     <ClCompile Include="GeometryGenerator.cpp">
       <Filter>Common\AssertLoader</Filter>
-    </ClCompile>
-    <ClCompile Include="tinyxml2.cpp">
-      <Filter>ThridParty</Filter>
     </ClCompile>
     <ClCompile Include="Camera.cpp">
       <Filter>Common\Scene</Filter>
@@ -262,14 +380,89 @@
     <ClCompile Include="Texture.cpp">
       <Filter>Common\AssertLoader</Filter>
     </ClCompile>
-    <ClCompile Include="Material.cpp">
-      <Filter>Common\Scene</Filter>
-    </ClCompile>
     <ClCompile Include="Memory.cpp">
       <Filter>Common\Memory</Filter>
     </ClCompile>
     <ClCompile Include="SceneCamera.cpp">
       <Filter>Common\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="PhysicsSimulater.cpp">
+      <Filter>Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="SceneTransform.cpp">
+      <Filter>Common\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Quaternion.cpp">
+      <Filter>Common\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="PhyDataStructure.cpp">
+      <Filter>Physics\DataStructure</Filter>
+    </ClCompile>
+    <ClCompile Include="PhyPartical.cpp">
+      <Filter>Physics\Partical</Filter>
+    </ClCompile>
+    <ClCompile Include="PhyParticalComponent.cpp">
+      <Filter>Physics\Partical</Filter>
+    </ClCompile>
+    <ClCompile Include="PFGenerator.cpp">
+      <Filter>Physics\Partical</Filter>
+    </ClCompile>
+    <ClCompile Include="PhyRigidBody.cpp">
+      <Filter>Physics\Rigidbody</Filter>
+    </ClCompile>
+    <ClCompile Include="PhyCollisionDetector.cpp">
+      <Filter>Physics\Rigidbody</Filter>
+    </ClCompile>
+    <ClCompile Include="PhyCollider.cpp">
+      <Filter>Physics\DataStructure</Filter>
+    </ClCompile>
+    <ClCompile Include="DebugLayer.cpp">
+      <Filter>Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="Material.cpp">
+      <Filter>Common\Shader</Filter>
+    </ClCompile>
+    <ClCompile Include="HLSLShaderLoader.cpp">
+      <Filter>d3d</Filter>
+    </ClCompile>
+    <ClCompile Include="ShaderPraser.cpp">
+      <Filter>Common\Shader</Filter>
+    </ClCompile>
+    <ClCompile Include="Shader.cpp">
+      <Filter>Common\Shader</Filter>
+    </ClCompile>
+    <ClCompile Include="tinyxml2.cpp">
+      <Filter>ThridParty\tinyxml</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\imgui.cpp">
+      <Filter>ThridParty\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\imgui_draw.cpp">
+      <Filter>ThridParty\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\imgui_widgets.cpp">
+      <Filter>ThridParty\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\imgui_impl_win32.cpp">
+      <Filter>ThridParty\imgui\win32</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\imgui_impl_dx12.cpp">
+      <Filter>ThridParty\imgui\dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="EditorGUIModule.cpp">
+      <Filter>GUI\Editer</Filter>
+    </ClCompile>
+    <ClCompile Include="EditorElement.cpp">
+      <Filter>GUI\Editer</Filter>
+    </ClCompile>
+    <ClCompile Include="EditorCallBacks.cpp">
+      <Filter>GUI\Editer</Filter>
+    </ClCompile>
+    <ClCompile Include="EditorElementPraser.cpp">
+      <Filter>GUI\Editer</Filter>
+    </ClCompile>
+    <ClCompile Include="FPSCamera.cpp">
+      <Filter>Common</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

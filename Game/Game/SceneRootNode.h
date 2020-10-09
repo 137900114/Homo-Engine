@@ -3,15 +3,9 @@
 #include <string>
 #include "Math.h"
 #include "SceneComponent.h"
+#include "SceneTransform.h"
 
 namespace Game {
-
-	struct SceneTransform {
-		Vector3 Position;
-		Vector3 Rotation;
-		Vector3 Scale;
-		Mat4x4  World;
-	};
 
 	enum SceneNodeType {
 		NODE, OBJECT, CAMERA, LIGHT
@@ -35,6 +29,7 @@ namespace Game {
 			for (int i = 0; i != components.size(); i++) {
 				components[i]->initialize();
 			}
+			initialized = true;
 		}
 
 		virtual void finalize() {
@@ -43,11 +38,20 @@ namespace Game {
 			}
 		}
 
+		void addComponent(SceneComponent* component) {
+			component->initialize();
+			components.push_back(component);
+		}
+
+		bool isInitialized() { return initialized; }
+
 		SceneTransform transform;
 		std::vector<SceneRootNode*> childs;
 		std::vector<SceneComponent *> components;
 		SceneNodeType type;
 		std::string name;
 		Scene* scene;
+
+		bool initialized = false;
 	};
 }
